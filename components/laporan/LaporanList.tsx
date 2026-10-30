@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import StatusBadge from "@/components/ui/StatusBadge";
 import type { Laporan } from "@/features/laporan/laporan.types";
 
 export default function LaporanList({ mode }: { mode: "mine" | "all" }) {
@@ -33,7 +34,7 @@ export default function LaporanList({ mode }: { mode: "mine" | "all" }) {
               {l.wilayah_nama ? ` — ${l.wilayah_nama}` : ""}
             </p>
           </div>
-          <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">{l.status}</span>
+          <StatusBadge status={l.status} />
         </li>
       ))}
     </ul>

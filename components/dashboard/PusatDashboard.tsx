@@ -36,7 +36,7 @@ export default function PusatDashboard() {
           <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
             {rows.map((k) => (
               <li key={k.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                <span>{k.nama}</span>
+                <span className="text-gray-900">{k.nama}</span>
                 <span className="text-gray-500">
                   {k.admin_nama ? `${k.admin_nama} (${k.admin_email})` : "Belum ada admin"}
                 </span>
