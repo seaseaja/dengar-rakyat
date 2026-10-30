@@ -52,3 +52,34 @@ export async function findLaporanById(id: string) {
   `);
   return (r.rows[0] as Laporan) ?? null;
 }
+
+export async function findLaporanByKotaKab(kotaKabId: string) {
+  const r = await query(`
+    SELECT l.*, u.nama AS pelapor_nama, w.nama AS wilayah_nama
+    FROM laporan l
+    JOIN users u ON u.id = l.user_id
+    LEFT JOIN wilayah w ON w.id = l.wilayah_id
+    WHERE w.parent_id = ${kotaKabId}
+    ORDER BY l.created_at DESC
+  `);
+  return r.rows as Laporan[];
+}
+
+export async function countStatusByKotaKab(kotaKabId: string) {
+  const r = await query(`
+    SELECT w.nama AS kecamatan, l.status, COUNT(*) AS jumlah
+    FROM laporan l
+    LEFT JOIN wilayah w ON w.id = l.wilayah_id
+    WHERE w.parent_id = ${kotaKabId}
+    GROUP BY w.nama, l.status
+    ORDER BY w.nama
+  `);
+  return r.rows as { kecamatan: string; status: string; jumlah: string }[];
+}
+
+export async function countStatusNasional() {
+  const r = await query(`
+    SELECT status, COUNT(*) AS jumlah FROM laporan GROUP BY status
+  `);
+  return r.rows as { status: string; jumlah: string }[];
+}

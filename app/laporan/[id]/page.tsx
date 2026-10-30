@@ -20,7 +20,7 @@ export default async function LaporanDetailPage({
       </Link>
 
       <div className="rounded-2xl bg-white p-6 shadow">
-        <LaporanDetail id={id} />
+        <LaporanDetail id={id} showStatusForm={user.role !== "warga"} />
       </div>
     </main>
   );

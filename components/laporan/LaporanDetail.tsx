@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import type { Laporan } from "@/features/laporan/laporan.types";
+import StatusUpdateForm from "./StatusUpdateForm";
 
-export default function LaporanDetail({ id }: { id: string }) {
+export default function LaporanDetail({ id, showStatusForm }: { id: string; showStatusForm?: boolean }) {
   const [data, setData] = useState<Laporan | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -36,10 +37,22 @@ export default function LaporanDetail({ id }: { id: string }) {
 
       <p className="text-sm text-gray-700">{data.deskripsi}</p>
 
-      {data.foto_path && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={data.foto_path} alt="Foto laporan" className="max-w-sm rounded-lg border" />
-      )}
+      <div className="flex flex-wrap gap-4">
+        {data.foto_path && (
+          <div>
+            <p className="mb-1 text-xs text-gray-500">Foto Awal (Before)</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={data.foto_path} alt="Foto awal laporan" className="max-w-xs rounded-lg border" />
+          </div>
+        )}
+        {data.foto_hasil_path && (
+          <div>
+            <p className="mb-1 text-xs text-gray-500">Foto Hasil (After)</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={data.foto_hasil_path} alt="Foto hasil penanganan" className="max-w-xs rounded-lg border" />
+          </div>
+        )}
+      </div>
 
       <dl className="space-y-1 text-sm text-gray-600">
         <div>Pelapor: {data.pelapor_nama}</div>
@@ -49,6 +62,8 @@ export default function LaporanDetail({ id }: { id: string }) {
         </div>
         <div>Dibuat: {new Date(data.created_at).toLocaleString("id-ID")}</div>
       </dl>
+
+      {showStatusForm && <StatusUpdateForm laporanId={data.id} statusSaatIni={data.status} />}
     </div>
   );
 }
