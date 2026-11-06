@@ -15,18 +15,21 @@ export async function findUserByCredentials(email: string, password: string) {
 
 export async function insertUser(input: RegisterInput & { role: Role }) {
   const { nik, nama, email, alamat, wilayah_id, password, role } = input;
-  const r = await query(
+  await query(
     `INSERT INTO users (nik, nama, email, alamat, wilayah_id, password, role)
-     VALUES ('${nik}', '${nama}', '${email}', '${alamat}', ${wilayah_id}, '${password}', '${role}')
-     RETURNING id, email, role`
+     VALUES ('${nik}', '${nama}', '${email}', '${alamat}', ${wilayah_id}, '${password}', '${role}')`
   );
+  // MySQL doesn't support RETURNING, get last inserted ID
+  const r = await query(`SELECT id, email, role FROM users WHERE email = '${email}'`);
   return r.rows[0] as { id: number; email: string; role: string };
 }
 
 export async function insertSession(userId: number) {
-  const r = await query(
-    `INSERT INTO sessions (user_id) VALUES (${userId}) RETURNING id`
+  await query(
+    `INSERT INTO sessions (user_id) VALUES (${userId})`
   );
+  // MySQL doesn't support RETURNING, get last inserted ID
+  const r = await query(`SELECT LAST_INSERT_ID() as id`);
   return r.rows[0].id as number;
 }
 

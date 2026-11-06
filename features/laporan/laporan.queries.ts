@@ -12,13 +12,14 @@ export async function insertLaporan(input: {
   wilayahId: number | null;
 }) {
   const { userId, judul, deskripsi, kategori, fotoPath, latitude, longitude, wilayahId } = input;
-  const r = await query(`
+  await query(`
     INSERT INTO laporan (user_id, judul, deskripsi, kategori, foto_path, latitude, longitude, wilayah_id)
     VALUES (${userId}, '${judul}', '${deskripsi}', '${kategori}',
             ${fotoPath ? `'${fotoPath}'` : "NULL"},
             ${latitude ?? "NULL"}, ${longitude ?? "NULL"}, ${wilayahId ?? "NULL"})
-    RETURNING id
   `);
+  // MySQL doesn't support RETURNING, get last inserted ID
+  const r = await query(`SELECT LAST_INSERT_ID() as id`);
   return r.rows[0].id as number;
 }
 
