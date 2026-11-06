@@ -1,96 +1,196 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import StatCard from "@/components/ui/StatCard";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { format, parseISO } from "date-fns";
 import StatusBadge from "@/components/ui/StatusBadge";
-import type { Laporan } from "@/features/laporan/laporan.types";
+import InsightsSummary from "./InsightsSummary";
 
-const STATUS_LIST = ["Diterima", "Diverifikasi", "Diproses", "Selesai"];
+const STATUS_COLORS: Record<string, string> = {
+  Diterima: "#f59e0b",
+  Diverifikasi: "#3b82f6",
+  Diproses: "#6366f1",
+  Selesai: "#10b981",
+};
+
+interface StatsData {
+  dailyTrend: Array<{ date: string; count: number }>;
+  statusDistribution: Array<{ status: string; count: number }>;
+  recentActivity: Array<{
+    id: number;
+    judul: string;
+    status: string;
+    created_at: string;
+    pelapor_nama: string;
+  }>;
+  totalStats: { total_laporan: number; selesai: number; pending: number };
+}
 
 export default function PosDashboardContent() {
-  const [data, setData] = useState<Laporan[]>([]);
+  const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState("");
-  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetch("/api/laporan")
+    fetch("/api/dashboard/pos-stats")
       .then((r) => r.json())
-      .then((d) => Array.isArray(d) && setData(d))
+      .then((d) => setStats(d))
+      .catch((e) => console.error(e))
       .finally(() => setLoading(false));
   }, []);
 
-  const counts = useMemo(() => {
-    const base: Record<string, number> = { Diterima: 0, Diverifikasi: 0, Diproses: 0, Selesai: 0 };
-    data.forEach((l) => {
-      base[l.status] = (base[l.status] ?? 0) + 1;
-    });
-    return base;
-  }, [data]);
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+          <p className="mt-3 text-sm text-gray-500">Memuat statistik...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const filtered = useMemo(() => {
-    return data.filter((l) => {
-      const matchStatus = !filterStatus || l.status === filterStatus;
-      const q = search.toLowerCase();
-      const matchSearch =
-        !q || l.judul.toLowerCase().includes(q) || (l.pelapor_nama ?? "").toLowerCase().includes(q);
-      return matchStatus && matchSearch;
-    });
-  }, [data, filterStatus, search]);
+  if (!stats) {
+    return <p className="text-sm text-red-500">Gagal memuat data statistik</p>;
+  }
 
-  if (loading) return <p className="text-sm text-gray-500">Memuat...</p>;
+  const { totalStats, statusDistribution } = stats;
+  const persentaseSelesai =
+    totalStats.total_laporan > 0
+      ? ((totalStats.selesai / totalStats.total_laporan) * 100).toFixed(1)
+      : "0";
+
+  // Format trend data
+  const formattedTrend = stats.dailyTrend.map((item) => ({
+    ...item,
+    dateLabel: format(parseISO(item.date), "dd MMM"),
+  }));
+
+  // Calculate status percentages
+  const getStatusPercentage = (status: string) => {
+    const found = statusDistribution.find((s) => s.status === status);
+    if (!found || totalStats.total_laporan === 0) return 0;
+    return (found.count / totalStats.total_laporan) * 100;
+  };
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Diterima" value={counts.Diterima} accent="amber" />
-        <StatCard label="Diverifikasi" value={counts.Diverifikasi} accent="blue" />
-        <StatCard label="Diproses" value={counts.Diproses} accent="indigo" />
-        <StatCard label="Selesai" value={counts.Selesai} accent="green" />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
+          <p className="text-sm font-medium text-blue-600">Total Laporan</p>
+          <p className="text-3xl font-bold text-blue-900">{totalStats.total_laporan}</p>
+        </div>
+        <div className="rounded-xl border-2 border-green-100 bg-gradient-to-br from-green-50 to-white p-4">
+          <p className="text-sm font-medium text-green-600">Selesai</p>
+          <p className="text-3xl font-bold text-green-900">{totalStats.selesai}</p>
+        </div>
+        <div className="rounded-xl border-2 border-purple-100 bg-gradient-to-br from-purple-50 to-white p-4">
+          <p className="text-sm font-medium text-purple-600">% Selesai</p>
+          <p className="text-3xl font-bold text-purple-900">{persentaseSelesai}%</p>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <input
-          placeholder="Cari judul atau nama pelapor..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm sm:flex-1"
-        />
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-        >
-          <option value="">Semua status</option>
-          {STATUS_LIST.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+      {/* Insights Summary */}
+      <InsightsSummary
+        totalLaporan={totalStats.total_laporan}
+        totalSelesai={totalStats.selesai}
+        totalPending={totalStats.pending}
+        role="POS"
+      />
+
+      {/* Trend Chart */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">Tren 7 Hari Terakhir</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={formattedTrend}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="dateLabel" stroke="#6b7280" style={{ fontSize: "12px" }} />
+            <YAxis stroke="#6b7280" style={{ fontSize: "12px" }} />
+            <Tooltip
+              contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px" }}
+            />
+            <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
 
-      {filtered.length === 0 ? (
-        <p className="text-sm text-gray-500">Tidak ada laporan yang cocok.</p>
-      ) : (
-        <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
-          {filtered.map((l) => (
-            <li key={l.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-              <div>
-                <Link href={`/laporan/${l.id}`} className="font-medium text-blue-600">
-                  {l.judul}
-                </Link>
-                <p className="text-gray-500">
-                  {l.kategori} — {l.pelapor_nama}
-                  {l.wilayah_nama ? ` — ${l.wilayah_nama}` : ""}
-                </p>
+      {/* Status Progress Bars */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">Status Progress</h3>
+        <div className="space-y-4">
+          {statusDistribution.map((s) => {
+            const percentage = getStatusPercentage(s.status);
+            return (
+              <div key={s.status}>
+                <div className="mb-1 flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700">{s.status}</span>
+                  <span className="text-gray-600">
+                    {s.count} ({percentage.toFixed(0)}%)
+                  </span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-gray-200">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${percentage}%`,
+                      backgroundColor: STATUS_COLORS[s.status],
+                    }}
+                  />
+                </div>
               </div>
-              <StatusBadge status={l.status} />
-            </li>
-          ))}
-        </ul>
-      )}
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Recent Activity Timeline */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">Aktivitas Terbaru</h3>
+        {stats.recentActivity.length === 0 ? (
+          <p className="text-sm text-gray-500">Belum ada aktivitas</p>
+        ) : (
+          <div className="space-y-4">
+            {stats.recentActivity.map((activity, idx) => (
+              <div key={activity.id} className="flex gap-4">
+                {/* Timeline dot */}
+                <div className="flex flex-col items-center">
+                  <div
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: STATUS_COLORS[activity.status] }}
+                  />
+                  {idx < stats.recentActivity.length - 1 && <div className="w-0.5 flex-1 bg-gray-200" />}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 pb-4">
+                  <Link
+                    href={`/laporan/${activity.id}`}
+                    className="font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    {activity.judul}
+                  </Link>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                    <StatusBadge status={activity.status} />
+                    <span>•</span>
+                    <span>{activity.pelapor_nama}</span>
+                    <span>•</span>
+                    <span>{format(parseISO(activity.created_at), "dd MMM yyyy, HH:mm")}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Quick Action */}
+      <Link
+        href="/laporan"
+        className="block rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-center font-semibold text-white shadow-lg transition hover:from-blue-700 hover:to-indigo-700"
+      >
+        Lihat Semua Laporan →
+      </Link>
     </div>
   );
 }

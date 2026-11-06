@@ -7,6 +7,7 @@ import AuthCard from "@/components/ui/AuthCard";
 import FormField from "@/components/ui/FormField";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
+import { PasswordStrengthMeter } from "@/components/ui/PasswordStrengthMeter";
 import { postJson } from "@/lib/api-client";
 
 interface WilayahOption {
@@ -174,6 +175,9 @@ export default function RegisterForm() {
         </div>
 
         <FormField id="password" name="password" label="Password" type="password" value={form.password} onChange={handleChange} />
+        
+        {/* Password Strength Meter - H6 */}
+        <PasswordStrengthMeter password={form.password} />
 
         <Button type="submit" disabled={loading}>
           {loading ? "Memproses..." : "Daftar"}

@@ -13,8 +13,12 @@ export const pool =
 
 if (process.env.NODE_ENV !== "production") globalForMysql.mysqlPool = pool;
 
-export async function query(text: string) {
-  const [rows] = await pool.query(text);
-  // Format response to match PostgreSQL structure (rows property)
+/**
+ * Execute parameterized query dengan prepared statement (hardened untuk Iterasi 2)
+ * @param text SQL query dengan placeholder '?'
+ * @param params Array parameter yang akan di-escape otomatis
+ */
+export async function query(text: string, params?: unknown[]) {
+  const [rows] = await pool.query(text, params);
   return { rows: rows as any[] };
 }

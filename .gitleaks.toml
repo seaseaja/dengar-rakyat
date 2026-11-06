@@ -1,0 +1,54 @@
+# Gitleaks Configuration - Iterasi 3 P3
+# Secret scanning untuk prevent accidental commits
+
+title = "Dengar Rakyat - Secret Scanning"
+
+[allowlist]
+description = "Allowlist for false positives"
+paths = [
+  '''\.md$''',
+  '''\.txt$''',
+  '''package-lock\.json$''',
+]
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(api[_-]?key|apikey|api[_-]?secret)(["\s:=]+)([a-zA-Z0-9_\-]{20,})'''
+tags = ["api", "key"]
+
+[[rules]]
+id = "slack-webhook"
+description = "Slack Webhook URL"
+regex = '''https://hooks\.slack\.com/services/[A-Z0-9]+/[A-Z0-9]+/[a-zA-Z0-9]+'''
+tags = ["slack", "webhook"]
+
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = '''-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'''
+tags = ["key", "private"]
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key"
+regex = '''(?i)(aws[_-]?access[_-]?key[_-]?id|aws[_-]?secret[_-]?access[_-]?key)(["\s:=]+)([A-Z0-9]{20})'''
+tags = ["aws", "key"]
+
+[[rules]]
+id = "mysql-connection"
+description = "MySQL Connection String"
+regex = '''mysql://[a-zA-Z0-9_\-]+:[a-zA-Z0-9_\-@]+@[a-zA-Z0-9\.\-:]+/[a-zA-Z0-9_\-]+'''
+tags = ["mysql", "database"]
+
+[[rules]]
+id = "generic-password"
+description = "Generic Password in Code"
+regex = '''(?i)(password|passwd|pwd)(["\s:=]+)([^"\s]{8,})'''
+tags = ["password"]
+
+[[rules]]
+id = "jwt-token"
+description = "JWT Token"
+regex = '''eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'''
+tags = ["jwt", "token"]
