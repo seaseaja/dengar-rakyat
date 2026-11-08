@@ -24,27 +24,17 @@ export async function GET() {
       return NextResponse.json({ error: "Wilayah not set" }, { status: 400 });
     }
 
-    // Daily trend (last 30 days) - scoped to user's wilayah
-    const dailyTrendResult = await query(
+    // Weekly trend (last 7 days)
+    const weeklyTrendResult = await query(
       `SELECT DATE(created_at) as date, COUNT(*) as count
        FROM laporan
-       WHERE wilayah_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+       WHERE wilayah_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
        GROUP BY DATE(created_at)
        ORDER BY date ASC`,
       [user.wilayah_id]
     );
 
-    // Monthly trend (last 12 months)
-    const monthlyTrendResult = await query(
-      `SELECT DATE_FORMAT(created_at, '%Y-%m') as date, COUNT(*) as count
-       FROM laporan
-       WHERE wilayah_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-       GROUP BY DATE_FORMAT(created_at, '%Y-%m')
-       ORDER BY date ASC`,
-      [user.wilayah_id]
-    );
-
-    // Top categories (top 10)
+    // Top categories
     const topCategoriesResult = await query(
       `SELECT kategori, COUNT(*) as count
        FROM laporan
@@ -55,27 +45,8 @@ export async function GET() {
       [user.wilayah_id]
     );
 
-    // Age distribution
-    const ageDistributionResult = await query(
-      `SELECT 
-        CASE
-          WHEN YEAR(CURDATE()) - YEAR(u.created_at) < 25 THEN '< 25'
-          WHEN YEAR(CURDATE()) - YEAR(u.created_at) < 35 THEN '25-34'
-          WHEN YEAR(CURDATE()) - YEAR(u.created_at) < 45 THEN '35-44'
-          WHEN YEAR(CURDATE()) - YEAR(u.created_at) < 55 THEN '45-54'
-          ELSE '55+'
-        END as age_group,
-        COUNT(*) as count
-       FROM laporan l
-       JOIN users u ON u.id = l.user_id
-       WHERE l.wilayah_id = ?
-       GROUP BY age_group
-       ORDER BY age_group`,
-      [user.wilayah_id]
-    );
-
-    // Status comparison
-    const statusComparisonResult = await query(
+    // Status distribution
+    const statusDistributionResult = await query(
       `SELECT status, COUNT(*) as count
        FROM laporan
        WHERE wilayah_id = ?
@@ -84,25 +55,40 @@ export async function GET() {
       [user.wilayah_id]
     );
 
-    // Kecamatan breakdown (sub-districts within this pemda)
-    const kecamatanResult = await query(
+    // Per kecamatan breakdown
+    const perKecamatanResult = await query(
       `SELECT w.nama as kecamatan, COUNT(*) as count
        FROM laporan l
        JOIN wilayah w ON w.id = l.wilayah_id
        WHERE l.wilayah_id = ?
        GROUP BY w.id, w.nama
-       ORDER BY count DESC
-       LIMIT 10`,
+       ORDER BY count DESC`,
       [user.wilayah_id]
     );
 
+    // Total stats
+    const totalStatsResult = await query(
+      `SELECT 
+        COUNT(*) as total_laporan,
+        SUM(CASE WHEN status = 'Selesai' THEN 1 ELSE 0 END) as selesai,
+        SUM(CASE WHEN status != 'Selesai' THEN 1 ELSE 0 END) as pending
+       FROM laporan
+       WHERE wilayah_id = ?`,
+      [user.wilayah_id]
+    );
+
+    const totalStats = totalStatsResult.rows[0] || { total_laporan: 0, selesai: 0, pending: 0 };
+
     return NextResponse.json({
-      dailyTrend: dailyTrendResult.rows,
-      monthlyTrend: monthlyTrendResult.rows,
+      weeklyTrend: weeklyTrendResult.rows,
       topCategories: topCategoriesResult.rows,
-      ageDistribution: ageDistributionResult.rows,
-      statusComparison: statusComparisonResult.rows,
-      kecamatanBreakdown: kecamatanResult.rows,
+      statusDistribution: statusDistributionResult.rows,
+      perKecamatan: perKecamatanResult.rows,
+      totalStats: {
+        total_laporan: totalStats.total_laporan || 0,
+        selesai: totalStats.selesai || 0,
+        pending: totalStats.pending || 0,
+      },
     });
   } catch (error) {
     console.error("[pemda-stats] Error:", error);
@@ -112,3 +98,4 @@ export async function GET() {
     );
   }
 }
+
