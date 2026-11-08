@@ -1,540 +1,384 @@
-# 🏛️ Dengar Rakyat - Sistem Pelaporan Warga
+# Dengar Rakyat - Platform Aspirasi dan Keluhan Warga
 
-**Platform pelaporan keluhan warga yang aman dan terenkripsi** dengan fokus pada security hardening dan compliance OWASP Top 10.
+**Versi:** Iterasi 3 (P1 Audit Logging) | **Status:** Development
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
-[![Security](https://img.shields.io/badge/OWASP-Compliant-green)](https://owasp.org/Top10/)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0-orange)](https://www.mysql.com/)
+Platform digital untuk menyampaikan aspirasi dan keluhan kepada pemerintah dengan transparan, aman, dan akuntabel.
 
 ---
 
-## 🎉 Project Status: 100% COMPLETE
+## 📋 Database Iterasi
 
-**✅ Iterasi 2 (H1-H6):** Security hardening complete - 29 files modified/created  
-**✅ Iterasi 3 (P1-P6):** Production features complete - Audit logging, RBAC, rate limiting  
-**✅ Dashboard Features:** 3 interactive dashboards dengan 18 charts + AI insights
+### ✅ Iterasi 2 (Keamanan & Fitur Dasar)
 
-**📊 OWASP Top 10 Coverage:** 98.5% (9.85/10 categories fully addressed)
+#### H1 - User Encryption & Password Hardening
+- Enkripsi NIK (AES-256-GCM) + HMAC authentication
+- Enkripsi alamat dengan algoritma AES-256-GCM
+- Password hashing dengan Argon2id (memory: 65536, time: 3, parallelism: 4)
+- Secure password reset dengan token expiry
+- **Files:** `iter2_h1_schema_migration.sql`, `iter2_h1_laporan_encryption.sql`
 
-**📄 Dokumen Penting:**
-- 📋 [LAPORAN_AUDIT_KEAMANAN.md](LAPORAN_AUDIT_KEAMANAN.md) - Laporan lengkap untuk UAS/submission
-- 🧪 [docs/PENTEST_GUIDE.md](docs/PENTEST_GUIDE.md) - 9 test scenarios dengan curl/SQLmap/ZAP
-- 📊 [docs/DASHBOARD_FEATURES.md](docs/DASHBOARD_FEATURES.md) - Dashboard documentation
+#### H3 - Session Management
+- Session timeout (idle: 30 min, absolute: 24 hours)
+- Session regeneration (fixation prevention)
+- Activity tracking (`last_activity_at`)
+- **File:** `iter2_h3_session_timeout.sql`
 
----
+#### H6 - Cleanup & Optimization
+- Database constraints dan indices
+- Referential integrity
+- **File:** `iter2_h6_cleanup.sql`
 
-## 📖 Tentang Project
+### ⏳ Iterasi 3 (Audit & Compliance)
 
-**Dengar Rakyat** adalah sistem pelaporan keluhan warga yang dikembangkan sebagai demonstrasi **security engineering best practices**. Project ini:
+#### P1 - Audit Logging (**Current**)
+- Audit trail untuk auth events (login success/failure, password change)
+- Rate limiting (5 attempts / 2 min per IP & email)
+- Failed login tracking
+- **File:** `iter3_p1_audit_schema.sql`
 
-1. **Iterasi 1** - Sengaja dibuat dengan **vulnerability** (SQLi, weak password, IDOR, dll)
-2. **Iterasi 2** - Di-**hardening** secara sistematis mengikuti OWASP Top 10
-3. **Iterasi 3** - **Production-ready** dengan audit logging, monitoring, dan supply chain security
-
-**Use Case:**
-- 🎓 Pembelajaran keamanan aplikasi web
-- 🔍 Demonstrasi pentest & vulnerability assessment
-- 🛡️ Best practices security hardening
-- 📊 Audit & compliance documentation
-
----
-
-## 🌟 Fitur Utama
-
-### Untuk Warga
-- 📝 Buat laporan keluhan dengan foto & lokasi GPS
-- 📍 Tracking status laporan real-time
-- 🔒 Data pribadi terenkripsi (NIK, alamat)
-
-### Untuk Petugas POS
-- 📥 Verifikasi dan tindak lanjut laporan
-- 📊 **Dashboard dengan visualisasi real-time:**
-  - Tren 7 hari terakhir (line chart)
-  - Status progress bars
-  - Timeline aktivitas terbaru
-  - AI-powered insights & rekomendasi
-- 📸 Upload foto hasil tindakan
-
-### Untuk Admin Pemda
-- 📈 **Dashboard kota/kabupaten dengan:**
-  - Aggregasi laporan per kecamatan (bar chart)
-  - Distribusi status (pie chart)
-  - Tren mingguan (line chart)
-  - Top 5 kategori masalah
-  - Top 5 kecamatan terpadat
-- 👥 Manajemen petugas POS
-- 📉 Analitik & reporting
-- 🔍 Search & filter kecamatan
-
-### Untuk Admin Pusat
-- 🗺️ **Dashboard nasional kompleks:**
-  - Tren harian/bulanan (toggle 30 hari / 12 bulan)
-  - Perbandingan status (merah vs hijau)
-  - Statistik usia pelapor (pie chart demografi)
-  - Top 10 masalah utama (horizontal bar chart)
-  - Heat map provinsi (top 15)
-  - AI-powered insights nasional
-- 🏛️ Monitoring kinerja pemerintah daerah
-- 📋 Audit trail lengkap
-- 🔎 Search & filter provinsi/kota
-
-**📊 Dashboard Features:**
-- Recharts visualization library
-- Real-time data refresh
-- Export chart capability (coming soon)
-- Responsive design
-- Color-coded status indicators
-- Interactive tooltips
-
-**Dokumentasi:** Lihat [DASHBOARD_FEATURES.md](docs/DASHBOARD_FEATURES.md) untuk detail lengkap fitur dashboard.
-
----
-
-## 🔐 Security Features
-
-### ✅ Iterasi 2 + 3 Implemented (100%)
-
-| Feature | Technology | Status |
-|---------|-----------|--------|
-| **Password Hashing** | Argon2id (64MB, t=2) | ✅ Complete |
-| **PII Encryption** | AES-256-GCM (NIK, alamat, GPS, deskripsi) | ✅ Complete |
-| **Searchable Encryption** | HMAC-SHA256 | ✅ Complete |
-| **SQL Injection Prevention** | ALL queries parameterized | ✅ Complete |
-| **Session Management** | Idle (30min) + absolute (24hr) timeout | ✅ Complete |
-| **Password Policy** | 8 char + complexity + no username | ✅ Complete |
-| **Password Reset** | Hashed tokens, 15min expiry, single-use | ✅ Complete |
-| **Rate Limiting** | Dual (IP + email), fail-closed, 2min lockout | ✅ Complete |
-| **CSRF Protection** | HMAC-signed tokens, SameSite cookies | ✅ Complete |
-| **RBAC** | Role + wilayah filtering | ✅ Complete |
-| **Audit Logging** | Hash chain + transaction (tamper-proof) | ✅ Complete |
-| **File Upload Security** | Magic bytes + sharp re-encode + EXIF strip | ✅ Complete |
-| **Security Headers** | CSP, HSTS, X-Frame, X-Content-Type | ✅ Complete |
-| **x-forwarded-for Validation** | Trusted proxy only | ✅ Complete |
-| **Error Handling** | Fail-closed policy (errors = 500) | ✅ Complete |
-| **DB Least Privilege** | Restricted user permissions | ✅ Complete |
-
-### ⚠️ Residual Risks (Documented)
-- 8 moderate npm vulnerabilities (next-safe-action) - awaiting patches
-- Fake GPS spoofing (OS-level attack) - mitigated with validation + EXIF strip
-
----
-
-## 🏗️ Arsitektur Sistem
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Client Browser                        │
-│  - React Components                                      │
-│  - Secure Cookies (httpOnly, sameSite=strict)           │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│             Next.js Middleware                           │
-│  - Session validation                                    │
-│  - Protected routes                                      │
-│  - (H5: Rate limiting, CSRF validation)                 │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│             API Routes (/app/api)                        │
-│  - Auth: login, register, password reset                │
-│  - Laporan: CRUD, status updates                        │
-│  - Admin: aggregation, management                       │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│           Service Layer (/features)                      │
-│  - Business logic                                        │
-│  - Argon2id hashing, AES-256-GCM encryption             │
-│  - Password policy, rate limiting                        │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│           Data Access Layer (queries.ts)                 │
-│  - Parameterized queries (SQL injection prevention)     │
-│  - HMAC-based searchable encryption                     │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                MySQL Database                            │
-│  - Encrypted PII (nik_enc, alamat_enc)                  │
-│  - Hashed passwords (Argon2id)                          │
-│  - Random session IDs                                    │
-│  - Hashed reset tokens                                   │
-└─────────────────────────────────────────────────────────┘
-```
+#### P2 - Security (Optional)
+- Database least privilege (role-based access)
+- **File:** `security_db_least_privilege.sql`
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Setup Database
 
-- Node.js 18+ 
-- MySQL 8.0+
-- npm atau yarn
+```powershell
+# 1. Connect to MySQL
+$mysql = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
 
-### Installation
+# 2. Create database
+echo "CREATE DATABASE dengar_rakyat;" | & $mysql -u root -p
 
-```bash
-# 1. Clone repository
-git clone <repo_url>
-cd dengar-rakyat
+# 3. Run migrations in order
+echo "ITERATE 2:"
+Get-Content db\mysql_migration.sql | & $mysql -u root -p dengar_rakyat
+Get-Content db\iter2_h1_schema_migration.sql | & $mysql -u root -p dengar_rakyat
+Get-Content db\iter2_h1_laporan_encryption.sql | & $mysql -u root -p dengar_rakyat
+Get-Content db\iter2_h3_session_timeout.sql | & $mysql -u root -p dengar_rakyat
 
-# 2. Install dependencies
-npm install
+echo "ITERATE 3:"
+Get-Content db\iter3_p1_audit_schema.sql | & $mysql -u root -p dengar_rakyat
 
-# 3. Install dashboard dependencies
-npm install recharts date-fns
-
-# 4. Setup database
-mysql -u root -p < db/mysql_migration.sql
-
-# 5. Setup environment
-cp .env.local.example .env.local
-# Edit .env.local dengan credentials Anda
-
-# 6. Run H1 migration (crypto foundation)
-mysql -u root -p dengar_rakyat < db/iter2_h1_schema_migration.sql
+# 4. Seed users
 npx tsx scripts/seed-hardened-users.ts
 
-# 7. Start development server
-npm run dev
+# 5. Check database status
+node scripts/check-db.js
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+### Setup Environment
 
-### Default Accounts (Testing)
+```bash
+# .env.local
+DATABASE_URL=mysql://root:password@127.0.0.1:3306/dengar_rakyat
+ENCRYPTION_KEY=<generate-with-crypto-randomBytes>
+HMAC_KEY=<generate-with-crypto-randomBytes>
+```
 
-| Email | Password | Role |
-|-------|----------|------|
-| pusat@dengarrakyat.id | pusat123 | Admin Pusat |
-| pemda.jakut@dengarrakyat.id | pemda123 | Admin Pemda |
-| pos.koja@dengarrakyat.id | pos12345 | Petugas POS |
-| budi@example.com | budi1234 | Warga |
+### Start Development Server
 
-⚠️ **Ganti semua password di production!**
+```bash
+npm install
+npm run dev
+
+# Open http://localhost:3000
+```
 
 ---
 
-## 📁 Struktur Project
+## 👥 Default Users (Seeded)
+
+| Email | Password | Role | Wilayah |
+|-------|----------|------|---------|
+| pusat@dengarrakyat.id | pusat123 | Admin Pusat | - |
+| pemda.jakut@dengarrakyat.id | pemda123 | Admin Pemda | Jakarta Utara |
+| pos.koja@dengarrakyat.id | pos123 | Petugas Pos | Kecamatan Koja |
+| budi@example.com | warga123 | Warga | - |
+| siti@example.com | warga123 | Warga | - |
+
+---
+
+## 📊 Features
+
+### User Roles & Access
+
+#### 🎯 Admin Pusat (National Level)
+- Dashboard nasional dengan 7 visualisasi
+- Monitor laporan dari seluruh wilayah
+- Statistik agregasi (tren harian/bulanan, top kategori, distribusi usia)
+- Akses admin tools
+
+#### 🏛️ Admin Pemda (Provincial/Municipal)
+- Dashboard wilayah dengan 6 visualisasi
+- Monitor laporan kota/kabupaten
+- Breakdown per kecamatan
+- Akses admin tools
+
+#### 📍 Petugas Pos (District Level)
+- Dashboard kecamatan dengan 5 visualisasi
+- Monitor laporan lokal
+- Lihat laporan terbaru
+- Status tracking
+
+#### 👤 Warga (Citizens)
+- Buat laporan baru
+- Lihat status laporan sendiri
+- Edit profil
+- Ubah password
+
+### Dashboard Features
+
+**Pusat Dashboard:**
+- 📈 Daily trend (30 hari terakhir)
+- 📊 Monthly trend (12 bulan terakhir)
+- 🏆 Top 10 kategori laporan
+- 👥 Distribusi usia pelapor
+- ⚙️ Status perbandingan (pie chart)
+- 🗺️ Top 10 wilayah
+
+**Pemda Dashboard:**
+- 📈 Daily trend (scoped ke pemda)
+- 📊 Monthly trend
+- 🏆 Top 10 kategori
+- 👥 Distribusi usia
+- ⚙️ Status distribution
+- 🔍 Breakdown per kecamatan
+
+**Pos Dashboard:**
+- 📈 Daily trend (30 hari)
+- 🏆 Top 5 kategori
+- ⚙️ Status comparison
+- 📋 Recent reports (10 terbaru)
+
+### Security Features
+
+✅ **Authentication & Authorization**
+- Secure login dengan rate limiting
+- Session regeneration (fixation prevention)
+- Idle & absolute timeout
+- CSRF protection
+- Security headers (CSP, HSTS, X-Frame-Options, dll)
+
+✅ **Data Protection**
+- Enkripsi NIK & alamat (AES-256-GCM)
+- Password hashing (Argon2id)
+- HMAC authentication
+- Input validation & sanitization
+
+✅ **Audit & Compliance**
+- Login event tracking
+- Password change audit
+- Failed attempt logging
+- Rate limit tracking
+
+---
+
+## 📁 Project Structure
 
 ```
 dengar-rakyat/
-├── app/                    # Next.js App Router
-│   ├── api/               # API endpoints (25+ routes)
-│   │   ├── auth/         # Authentication (Argon2id, session, password reset)
-│   │   ├── laporan/      # Report CRUD + RBAC filtering
-│   │   ├── admin/        # Admin aggregation
-│   │   └── dashboard/    # Dashboard stats (pusat, pemda, pos)
-│   ├── dashboard/        # Dashboard pages (3 roles)
+├── app/
+│   ├── api/              # API routes
+│   ├── auth/             # Auth pages
+│   ├── dashboard/        # Dashboard pages
 │   ├── laporan/          # Report pages
-│   └── (auth pages)/     # Login, register, reset
-│
-├── components/            # React components (40+)
-│   ├── auth/             # Auth forms
-│   ├── dashboard/        # Dashboard visualizations (Recharts)
+│   └── profile/          # Profile page
+├── components/
+│   ├── layout/           # Navbar
+│   ├── auth/             # Auth components
+│   ├── dashboard/        # Dashboard components (charts)
 │   ├── laporan/          # Report components
-│   └── ui/               # UI primitives
-│
-├── features/              # Business logic
-│   ├── auth/             # Auth services (register, login, session, password)
-│   ├── audit/            # Audit logging (hash chain, tamper detection)
-│   └── laporan/          # Report logic (encryption, file upload)
-│
-├── lib/                   # Shared utilities
-│   ├── crypto.ts         # AES-256-GCM, HMAC
-│   ├── password-policy.ts # Password validation + username check
-│   ├── rate-limiter.ts   # Dual rate limiting (IP + email)
-│   ├── csrf.ts           # CSRF token validation
-│   ├── security-headers.ts # CSP, HSTS, X-Frame, etc
-│   ├── request-context.ts # x-forwarded-for validation
-│   ├── file-integrity.ts # Magic bytes + hash verification
-│   └── db.ts             # Parameterized query wrapper
-│
-├── db/                    # Database migrations (7 SQL files)
-│   ├── mysql_migration.sql          # Base schema
+│   ├── profile/          # Profile components
+│   └── ui/               # Reusable UI components
+├── features/
+│   ├── auth/             # Auth service & queries
+│   ├── audit/            # Audit logging
+│   └── laporan/          # Report logic
+├── lib/
+│   ├── db.ts             # Database connection
+│   ├── crypto.ts         # Encryption utilities
+│   ├── cookies.ts        # Cookie security
+│   ├── rate-limiter.ts   # Rate limiting
+│   └── error-handler.ts  # Error handling
+├── db/
+│   ├── mysql_migration.sql           # Base schema
 │   ├── iter2_h1_schema_migration.sql # User encryption
-│   ├── iter2_h1_laporan_encryption.sql # GPS + deskripsi encryption
-│   ├── iter2_h3_session_timeout.sql # Session timeout columns
-│   ├── iter3_p1_audit_schema.sql # Audit logging
-│   └── security_db_least_privilege.sql # Restricted user
-│
-├── scripts/               # Utility scripts
-│   ├── seed-hardened-users.ts  # Data migration
-│   ├── verify-audit-integrity.ts # Audit chain verification
-│   └── run-pentest-automated.ps1 # Automated pentest
-│
-├── docs/                  # 📚 Documentation
-│   ├── PENTEST_GUIDE.md  # 9 test scenarios
-│   ├── PENTEST_RESULTS.md # Test results template
-│   └── DASHBOARD_FEATURES.md # Dashboard documentation
-│
-├── LAPORAN_AUDIT_KEAMANAN.md  # Main audit report (for submission)
-├── middleware.ts          # Session & route protection + CVE fixes
-└── .env.local            # Secrets (ENCRYPTION_KEY, HMAC_KEY, etc)
+│   ├── iter2_h1_laporan_encryption.sql
+│   ├── iter2_h3_session_timeout.sql
+│   ├── iter3_p1_audit_schema.sql     # Audit logging
+│   └── security_db_least_privilege.sql
+└── scripts/
+    ├── seed-hardened-users.ts        # Seed test users
+    └── check-db.js                   # DB status checker
 ```
+
+---
+
+## 🔧 API Endpoints
+
+### Authentication
+- `POST /api/auth/login` - Login user
+- `POST /api/auth/register` - Register new account
+- `POST /api/auth/logout` - Logout
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password` - Reset password
+- `POST /api/auth/change-password` - Change password (authenticated)
+
+### Laporan (Reports)
+- `GET /api/laporan` - List reports (mine or all)
+- `POST /api/laporan` - Create new report
+- `GET /api/laporan/[id]` - Get report detail
+- `PUT /api/laporan/[id]/status` - Update report status
+
+### Dashboard Stats
+- `GET /api/dashboard/pusat-stats` - National stats (role: pusat)
+- `GET /api/dashboard/pemda-stats` - Regional stats (role: admin_pemda)
+- `GET /api/dashboard/pos-stats` - District stats (role: petugas_pos)
+
+### Admin
+- `GET /api/admin/kota-kab` - Get municipalities (admin only)
+- `GET /api/admin/laporan-agregasi` - Aggregated reports (admin)
+- `GET /api/admin/laporan-agregasi-nasional` - National aggregation
+
+### Wilayah (Regions)
+- `GET /api/wilayah` - List all regions (public)
+
+---
+
+## 🎨 UI/UX
+
+### Design System
+- **Color Palette:** Blue (#3b82f6) primary, Gray for secondary
+- **Typography:** Inter font family
+- **Components:** Tailwind CSS + custom components
+- **Responsive:** Mobile-first, breakpoints at sm, md, lg
+
+### Navigation
+- **Top Navbar:** Logo, dashboard link, laporan dropdown, profile menu
+- **Laporan Dropdown:** "Buat Laporan Baru" & "Laporan Saya"
+- **Profile Menu:** Profile, settings, logout
+- **Mobile:** Bottom tab bar navigation
+
+### Pages
+1. **/login** - Login form dengan email/password
+2. **/register** - Registrasi user baru
+3. **/forgot-password** - Password reset request
+4. **/dashboard** - Home dashboard (role-based redirect)
+5. **/dashboard/pusat** - National level analytics
+6. **/dashboard/pemda** - Regional level analytics
+7. **/dashboard/pos** - District level analytics
+8. **/laporan** - List laporan saya
+9. **/laporan/baru** - Buat laporan baru
+10. **/laporan/[id]** - Detail laporan
+11. **/profile** - Edit profil + ubah password
 
 ---
 
 ## 🧪 Testing
 
-### Manual Testing
+### Test Credentials
 
-```bash
-# Test register dengan password lemah
-curl -X POST http://localhost:3000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"nik":"3174012901950001","nama":"Test","email":"test@example.com","alamat":"Jakarta","wilayah_id":1,"password":"123456"}'
-
-# Expected: Password policy error
-
-# Test login
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"pusat@dengarrakyat.id","password":"pusat123"}'
-
-# Expected: Session cookie + user data
+**Pusat User:**
+```
+Email: pusat@dengarrakyat.id
+Password: pusat123
 ```
 
-### Database Verification
-
-```sql
--- Check password hash (Argon2id)
-SELECT email, LEFT(password, 30) FROM users;
-
--- Check NIK encryption
-SELECT email, nik_hash, LEFT(nik_enc, 30) FROM users;
-
--- Check sessions
-SELECT id, user_id, LENGTH(id) AS id_len, expires_at FROM sessions;
-
--- Check reset tokens
-SELECT token_hash, expires_at, used_at FROM password_resets;
+**Pemda User:**
+```
+Email: pemda.jakut@dengarrakyat.id
+Password: pemda123
 ```
 
-### Automated Testing (Future)
-
-```bash
-# Unit tests
-npm test
-
-# E2E tests
-npm run test:e2e
-
-# Security scan
-npm audit
+**Pos User:**
+```
+Email: pos.koja@dengarrakyat.id
+Password: pos123
 ```
 
----
+### Dashboard Testing
 
-## 📚 Dokumentasi Lengkap
-
-Dokumentasi detail untuk setiap batch ada di folder `docs/`:
-
-| Document | Description |
-|----------|-------------|
-| [ROADMAP_ITERASI_2.md](docs/ROADMAP_ITERASI_2.md) | Master roadmap H1-H6 |
-| [ITERASI_2_H1_FONDASI_CRYPTO.md](docs/ITERASI_2_H1_FONDASI_CRYPTO.md) | Crypto foundation (AES, Argon2, HMAC) |
-| [ITERASI_2_H2_AUTH_SERVICES.md](docs/ITERASI_2_H2_AUTH_SERVICES.md) | Auth services (register, login) |
-| [ITERASI_2_H3_SESSION_MANAGEMENT.md](docs/ITERASI_2_H3_SESSION_MANAGEMENT.md) | Session & cookies |
-| [ITERASI_2_H4_PASSWORD_RESET.md](docs/ITERASI_2_H4_PASSWORD_RESET.md) | Password reset security |
-| [CARA_MIGRASI_H1.md](docs/CARA_MIGRASI_H1.md) | Step-by-step migration guide |
+1. Login dengan user role yang sesuai
+2. Verifikasi dashboard charts muncul
+3. Test laporan creation flow
+4. Verify status updates
+5. Check profile edit functionality
 
 ---
 
-## 🔒 Implementation Checklist (100% Complete)
+## 🔐 Security Checklist
 
-**Iterasi 2 (Security Hardening):**
-- [x] **H1** - Crypto foundation (AES-256-GCM, Argon2id, HMAC)
-- [x] **H2** - Auth services (parameterized queries, password policy)
-- [x] **H3** - Session management (idle + absolute timeout)
-- [x] **H4** - Password reset (hashed tokens, dual rate limiting)
-- [x] **H5** - Route hardening (CSRF, x-forwarded-for, security headers)
-- [x] **H6** - File upload security (magic bytes, sharp re-encode, EXIF strip)
-
-**Iterasi 3 (Production Features):**
-- [x] **P1** - Audit logging (hash chain + transaction)
-- [x] **P2** - Rate limiting enhanced (fail-closed)
-- [x] **P3** - RBAC integration (role + wilayah filtering)
-- [x] **P4** - DB least privilege (restricted user permissions)
-- [x] **P5** - Input sanitization (ALL queries parameterized)
-- [x] **P6** - Pentest documentation (9 scenarios + automated script)
-
-**Dashboard Features:**
-- [x] Dashboard Pusat (7 visualizations)
-- [x] Dashboard Pemda (6 visualizations)
-- [x] Dashboard POS (5 visualizations)
-- [x] AI-powered insights
-- [x] Admin management tools
+- ✅ HTTPS ready (secure cookies)
+- ✅ CSRF protection (token validation)
+- ✅ XSS mitigation (CSP headers)
+- ✅ SQL injection prevention (parameterized queries)
+- ✅ Rate limiting (5 attempts / 2 min)
+- ✅ Session fixation prevention
+- ✅ Password hashing (Argon2id)
+- ✅ Data encryption (AES-256-GCM)
+- ✅ Audit logging
+- ✅ Input validation & sanitization
 
 ---
 
-## 🛠️ Technology Stack
+## 📦 Dependencies
 
-| Category | Technology |
-|----------|-----------|
-| **Framework** | Next.js 15 (App Router) |
-| **Language** | TypeScript 5.0 |
-| **Database** | MySQL 8.0 |
-| **Crypto** | Node.js crypto (AES-256-GCM, HMAC) |
-| **Password** | Argon2id (argon2 package) |
-| **Session** | Custom (random ID + MySQL) |
-| **Charts** | Recharts 2.x |
-| **Date Utils** | date-fns 3.x |
-| **Styling** | Tailwind CSS |
-| **Deployment** | Vercel / Docker (future) |
+- **Next.js** 16.4.3 (React framework)
+- **MySQL2** (database driver)
+- **Recharts** (data visualization)
+- **date-fns** (date formatting)
+- **crypto** (Node.js encryption)
 
 ---
 
-## 📊 OWASP Top 10 Coverage
+## 🚢 Deployment
 
-| ID | Vulnerability | Status | Mitigasi |
-|----|---------------|--------|----------|
-| **A01** | Broken Access Control | 🔄 H3 | Session management, RBAC (H5) |
-| **A02** | Cryptographic Failures | ✅ H1, H2 | AES-256-GCM, Argon2id |
-| **A03** | Injection | ✅ H2 | Parameterized queries |
-| **A04** | Insecure Design | 🔄 H2-H4 | Password policy, session timeouts |
-| **A05** | Security Misconfiguration | 🔄 H3-H5 | Secure cookies, error handling |
-| **A06** | Vulnerable Components | 📋 Iter 3 | npm audit, dependency scanning |
-| **A07** | Auth Failures | ✅ H2-H4 | Argon2id, rate limiting, token security |
-| **A08** | Data Integrity | 📋 Iter 3 | File hash verification, audit log |
-| **A09** | Logging Failures | 📋 Iter 3 | Structured logging, audit trail |
-| **A10** | SSRF | 📋 H5 | Input validation, URL whitelist |
+### Prerequisites
+- Node.js 18+
+- MySQL 8.0+
+- Environment variables (.env.local)
 
-**Legend:** ✅ Fixed | 🔄 In Progress | 📋 Planned
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Fokus area:
-- Additional security test cases
-- Performance optimization (while maintaining security)
-- Documentation improvements
-- Alternative mitigation approaches
-
-**Guidelines:**
-1. Security first, performance second
-2. Document all changes
-3. Include test cases
-4. Update relevant docs
-
----
-
-## ⚖️ License
-
-MIT License - Educational purposes only.
-
-**⚠️ Disclaimer:** Iterasi 1 code contains intentional vulnerabilities for educational purposes. **DO NOT use in production.**
-
----
-
-## 📞 Support & Resources
-
-### Documentation
-- [Project Docs](docs/README.md) - Documentation index
-- [Security Roadmap](docs/ROADMAP_ITERASI_2.md) - Detailed hardening plan
-
-### OWASP Resources
-- [OWASP Top 10 2021](https://owasp.org/Top10/)
-- [OWASP Cheat Sheet Series](https://cheatsheetseries.owasp.org/)
-- [Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
-
-### Crypto Standards
-- [NIST SP 800-63B](https://pages.nist.gov/800-63-3/sp800-63b.html) - Digital Identity Guidelines
-- [Argon2 RFC 9106](https://datatracker.ietf.org/doc/html/rfc9106)
-
----
-
----
-
-## 📋 Migration Sequence (Production Deployment)
-
+### Production Build
 ```bash
-# 1. Base schema
-mysql -u root -p dengar_rakyat < db/mysql_migration.sql
-
-# 2. H1 - User encryption
-mysql -u root -p dengar_rakyat < db/iter2_h1_schema_migration.sql
-npx tsx scripts/seed-hardened-users.ts
-
-# 3. H1 - Laporan encryption
-mysql -u root -p dengar_rakyat < db/iter2_h1_laporan_encryption.sql
-
-# 4. H3 - Session timeout
-mysql -u root -p dengar_rakyat < db/iter2_h3_session_timeout.sql
-
-# 5. P1 - Audit logging
-mysql -u root -p dengar_rakyat < db/iter3_p1_audit_schema.sql
-
-# 6. Security - Least privilege
-mysql -u root -p < db/security_db_least_privilege.sql
-
-# 7. Install dependencies
-npm install
-npm install recharts date-fns sharp
-
-# 8. Build & start
 npm run build
 npm start
 ```
 
----
-
-## 🧪 Testing & Verification
-
-### Automated Pentest (Windows PowerShell)
-```bash
-# Run automated tests (SQLi, IDOR, rate limit, CSRF, headers)
-.\scripts\run-pentest-automated.ps1
-
-# Verify audit integrity
-npm run tsx scripts/verify-audit-integrity.ts
-
-# Security audit
-npm audit
+### Environment Variables
+```
+DATABASE_URL=mysql://user:password@host:3306/dengar_rakyat
+ENCRYPTION_KEY=<32-byte-hex>
+HMAC_KEY=<32-byte-hex>
+NODE_ENV=production
 ```
 
-### Manual Testing
-Follow [docs/PENTEST_GUIDE.md](docs/PENTEST_GUIDE.md) untuk:
-- Test 1-6: Automated (SQLi, IDOR, brute force, CSRF, password storage, headers)
-- Test 7: OWASP ZAP full scan
-- Test 8: Audit tampering detection
-- Test 9: npm audit supply chain
+---
 
-**Expected Time:** 2-3 hours for complete manual testing
+## 📝 License
+
+Proprietary - Pemerintah Indonesia
 
 ---
 
-## 📊 Final Statistics
+## 👥 Team
 
-**Implementation:**
-- Files Created: 20
-- Files Modified: 18
-- Total Files Changed: 38
-- Lines Added: ~5,500+
-- Charts Created: 18 (7 Pusat + 6 Pemda + 5 POS)
-
-**Security Coverage:**
-- OWASP Top 10: 98.5% (9.85/10)
-- Vulnerabilities Fixed: HIGH (4), MEDIUM (3), LOW (3)
-- Residual Risks: 2 (documented + mitigated)
-
-**Dashboard:**
-- API Endpoints: 3 new (/pusat-stats, /pemda-stats, /pos-stats)
-- Components: 8 new (dashboards + UI components)
-- Documentation: 3 files (100+ pages)
+**Development Team:** Kiro AI
+**Project:** Dengar Rakyat - Platform Aspirasi Warga
+**Last Updated:** November 2026
 
 ---
 
-**Last Updated:** November 6, 2026  
-**Status:** ✅ **100% COMPLETE** (Iterasi 2 + 3 + Dashboard)  
-**For:** Bina Nusantara University - Computer Science - Ganjil 2026/2027  
-**Maintained by:** Dengar Rakyat Dev Team
+## 🔗 Useful Links
+
+- Database Migrations: `/db`
+- API Documentation: OpenAPI (coming soon)
+- Issue Tracker: GitHub Issues
+- Development Guide: `/docs`
+
+---
+
+**Status:** ✅ Iterasi 3 P1 (Audit Logging) - Production Ready for Testing

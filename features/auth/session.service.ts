@@ -91,14 +91,13 @@ export async function validateSession(sessionId: string): Promise<{
     user: {
       id: session.user_id,
       email: session.email,
-      username: session.username,
       nama: session.nama,
       role: session.role,
       wilayah_id: session.wilayah_id,
       nik: null, // Never expose NIK in session
       alamat: null,
-      created_at: session.user_created_at,
-      updated_at: session.user_updated_at,
+      created_at: null,
+      updated_at: null,
     },
   };
 }

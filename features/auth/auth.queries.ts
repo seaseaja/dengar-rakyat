@@ -170,8 +170,7 @@ export async function findSessionById(sessionId: string) {
   const r = await query(
     `SELECT 
       s.id, s.user_id, s.expires_at, s.last_activity_at,
-      u.email, u.username, u.nama, u.role, u.wilayah_id,
-      u.created_at AS user_created_at, u.updated_at AS user_updated_at
+      u.email, u.nama, u.role, u.wilayah_id
      FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.id = ?`,
@@ -183,11 +182,8 @@ export async function findSessionById(sessionId: string) {
     expires_at: Date;
     last_activity_at: Date;
     email: string;
-    username: string;
     nama: string;
     role: string;
     wilayah_id: number;
-    user_created_at: Date;
-    user_updated_at: Date;
   } | undefined;
 }

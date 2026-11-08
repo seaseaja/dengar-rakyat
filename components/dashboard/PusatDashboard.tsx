@@ -50,14 +50,31 @@ interface StatsData {
 export default function PusatDashboard() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<"daily" | "monthly">("daily");
 
   useEffect(() => {
-    fetch("/api/dashboard/pusat-stats")
-      .then((r) => r.json())
-      .then((d) => setStats(d))
-      .catch((e) => console.error(e))
-      .finally(() => setLoading(false));
+    async function loadStats() {
+      try {
+        const res = await fetch("/api/dashboard/pusat-stats", {
+          credentials: "include",
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Failed to load stats: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        setStats(data);
+      } catch (e) {
+        console.error("Error loading stats:", e);
+        setError(e instanceof Error ? e.message : "Gagal memuat data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadStats();
   }, []);
 
   if (loading) {
@@ -71,8 +88,23 @@ export default function PusatDashboard() {
     );
   }
 
-  if (!stats) {
-    return <p className="text-sm text-red-500">Gagal memuat data statistik</p>;
+  if (error || !stats) {
+    return (
+      <div className="rounded-lg bg-red-50 p-6 text-center">
+        <p className="text-sm text-red-600">{error || "Gagal memuat data statistik"}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-2 text-sm text-red-700 underline hover:text-red-800"
+        >
+          Coba lagi
+        </button>
+      </div>
+    );
+  }
+
+  // Safety check: ensure data exists
+  if (!stats.dailyTrend || !stats.monthlyTrend || !stats.statusComparison) {
+    return <p className="text-sm text-red-500">Data tidak lengkap</p>;
   }
 
   // Format trend data

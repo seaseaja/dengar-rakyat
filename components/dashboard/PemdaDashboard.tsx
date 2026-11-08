@@ -58,11 +58,26 @@ export default function PemdaDashboard({
       return;
     }
 
-    fetch("/api/dashboard/pemda-stats")
-      .then((r) => r.json())
-      .then((d) => setStats(d))
-      .catch((e) => console.error(e))
-      .finally(() => setLoading(false));
+    async function loadStats() {
+      try {
+        const res = await fetch("/api/dashboard/pemda-stats", {
+          credentials: "include",
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Failed to load stats: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        setStats(data);
+      } catch (e) {
+        console.error("Error loading pemda stats:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadStats();
   }, [kotaKabId]);
 
   if (!kotaKabId) {

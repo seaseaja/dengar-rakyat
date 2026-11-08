@@ -32,11 +32,26 @@ export default function PosDashboardContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/dashboard/pos-stats")
-      .then((r) => r.json())
-      .then((d) => setStats(d))
-      .catch((e) => console.error(e))
-      .finally(() => setLoading(false));
+    async function loadStats() {
+      try {
+        const res = await fetch("/api/dashboard/pos-stats", {
+          credentials: "include",
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Failed to load stats: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        setStats(data);
+      } catch (e) {
+        console.error("Error loading pos stats:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadStats();
   }, []);
 
   if (loading) {

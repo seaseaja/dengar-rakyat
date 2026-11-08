@@ -52,23 +52,22 @@ async function main() {
   loadEnvLocal();
   
   // Dynamic import setelah env loaded
-  const { pool } = await import("../lib/db");
+  const { query } = await import("../lib/db");
   const { encrypt, hmacHash } = await import("../lib/crypto");
   
   // Ambil semua user yang belum di-migrate (nik_hash NULL)
-  const { rows } = await pool.query(
+  const result = await query(
     "SELECT id, email, nik, alamat FROM users WHERE nik_hash IS NULL"
   );
   
-  if (rows.length === 0) {
+  if (!result || !result.rows || result.rows.length === 0) {
     console.log("✅ Semua user sudah ter-migrate. Tidak ada yang perlu diubah.");
-    await pool.end();
-    return;
+    process.exit(0);
   }
   
-  console.log(`📋 Ditemukan ${rows.length} user yang perlu di-migrate:\n`);
+  console.log(`📋 Ditemukan ${result.rows.length} user yang perlu di-migrate:\n`);
   
-  for (const row of rows as { id: number; email: string; nik: string; alamat: string }[]) {
+  for (const row of result.rows as { id: number; email: string; nik: string; alamat: string }[]) {
     // Cari password dummy, fallback ke password default
     const dummy = DUMMY_PASSWORDS.find((d) => d.email === row.email);
     const plainPassword = dummy?.password ?? "GantiSegera123!";
@@ -87,7 +86,7 @@ async function main() {
     const alamatEnc = encrypt(row.alamat);
     
     // Update database
-    await pool.query(
+    await query(
       `UPDATE users 
        SET password = ?, nik_enc = ?, nik_hash = ?, alamat_enc = ? 
        WHERE id = ?`,
@@ -104,7 +103,7 @@ async function main() {
   console.log("   - NIK & alamat dienkripsi dengan AES-256-GCM");
   console.log("   - NIK hash tersedia untuk pencarian tanpa decrypt");
   
-  await pool.end();
+  process.exit(0);
 }
 
 main().catch((err) => {
