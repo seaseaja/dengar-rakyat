@@ -181,41 +181,25 @@ ALTER TABLE laporan ADD CONSTRAINT fk_laporan_wilayah
 
 CREATE TABLE IF NOT EXISTS audit_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  
-  -- Event information
-  event_type VARCHAR(50) NOT NULL COMMENT 'login_success, login_failure, password_change, etc',
-  status VARCHAR(50) NOT NULL COMMENT 'success or failure',
-  
-  -- User information
-  user_id INT COMMENT 'User ID (NULL for failed logins)',
-  user_email VARCHAR(255) COMMENT 'User email (for tracking)',
-  user_role VARCHAR(50) COMMENT 'User role at time of event',
-  
-  -- Error tracking
-  error_message TEXT COMMENT 'Failure reason (e.g., invalid_credentials, rate_limited)',
-  
-  -- Request context
-  ip_address VARCHAR(45) COMMENT 'IPv4 or IPv6 address',
-  user_agent TEXT COMMENT 'Browser/client information',
-  request_id VARCHAR(255) COMMENT 'Correlation ID for request tracing',
-  
-  -- Additional data
-  metadata JSON COMMENT 'Additional context (reason, attempt_count, etc)',
-  
-  -- Timestamp
+  event_type VARCHAR(50) NOT NULL,
+  status VARCHAR(50) NOT NULL,
+  user_id INT,
+  user_email VARCHAR(255),
+  user_role VARCHAR(50),
+  error_message TEXT,
+  ip_address VARCHAR(45),
+  user_agent TEXT,
+  request_id VARCHAR(255),
+  metadata LONGTEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   
-  -- Constraints & Indices
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
   KEY idx_event_type (event_type),
   KEY idx_user_id (user_id),
   KEY idx_user_email (user_email),
   KEY idx_status (status),
   KEY idx_ip_address (ip_address),
-  KEY idx_created_at (created_at),
-  
-  -- Partition untuk performance (opsional)
-  KEY idx_created_date (DATE(created_at))
+  KEY idx_created_at (created_at)
 );
 
 -- ========================================================================
