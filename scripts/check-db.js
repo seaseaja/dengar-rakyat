@@ -4,10 +4,14 @@ const mysql = require('mysql2/promise');
 async function checkDB() {
   try {
     // Connect to MySQL (without selecting database first)
+    const dbPassword = process.env.DB_PASSWORD;
+    const dbHost = process.env.DB_HOST;
+    const dbUser = process.env.DB_USER;
+
     const connection = await mysql.createConnection({
-      host: '127.0.0.1',
-      user: 'root',
-      password: '021936',
+      host: dbHost,
+      user: dbUser,
+      password: dbPassword
     });
 
     console.log('✅ MySQL connection: OK\n');
