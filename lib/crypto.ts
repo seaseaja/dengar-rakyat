@@ -51,7 +51,8 @@ export function decrypt(payload: string): string {
   const encrypted = buf.subarray(28);
   
   const decipher = crypto.createDecipheriv(ALGORITHM, getKey(), iv);
-  decipher.setAuthTag(authTag); // FIX: Explicitly set 16-byte auth tag before decryption
+  // Set 16-byte authentication tag - CRITICAL for GCM mode security
+  decipher.setAuthTag(Buffer.from(authTag));
   
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
   return decrypted.toString("utf8");
