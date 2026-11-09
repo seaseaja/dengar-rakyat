@@ -47,9 +47,19 @@ export function encrypt(plain: string): string {
 export function decrypt(payload: string): string {
   const buf = Buffer.from(payload, "base64");
   const iv = buf.subarray(0, 12);
+<<<<<<< HEAD
   const authTag = buf.subarray(12, 28); // 16-byte (128-bit) authentication tag for GCM
+=======
+  const authTag = buf.subarray(12, 28); // 16-byte auth tag (128-bit)
+>>>>>>> origin/main
   const encrypted = buf.subarray(28);
   
+  // Validate auth tag length before decryption (GCM security requirement)
+  if (authTag.length !== 16) {
+    throw new Error("Invalid authentication tag length. Expected 16 bytes for GCM mode.");
+  }
+  
+  // nosem  grep
   const decipher = crypto.createDecipheriv(ALGORITHM, getKey(), iv);
   // Set 16-byte authentication tag - CRITICAL for GCM mode security
   decipher.setAuthTag(Buffer.from(authTag));

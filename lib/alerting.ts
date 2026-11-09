@@ -19,17 +19,12 @@ export interface Alert {
 export async function sendAlert(alert: Alert): Promise<void> {
   const timestamp = alert.timestamp || new Date();
 
-  // Log to console (always) - FIX: Avoid format string injection
-  console.log(
-    "[ALERT %s] %s",
-    alert.level.toUpperCase(),
-    alert.title.replace(/%/g, "%%"),
-    {
-      message: alert.message,
-      data: alert.data,
-      timestamp,
-    }
-  );
+  // Log to console (always) - use safe format to prevent format string injection
+  console.log("[ALERT] Level:", alert.level.toUpperCase(), "Title:", alert.title, {
+    message: alert.message,
+    data: alert.data,
+    timestamp,
+  });
 
   // Send to Slack (if configured)
   if (process.env.SLACK_WEBHOOK_URL) {
@@ -98,8 +93,8 @@ async function sendEmailAlert(alert: Alert, timestamp: Date): Promise<void> {
   if (!email) return;
 
   // TODO: Implement email sending (via SendGrid, SES, etc)
-  // FIX: Avoid format string injection - use proper format strings
-  console.log("[Alerting] Would send email to %s", email.replace(/%/g, "%%"), {
+  // Use safe format to prevent format string injection
+  console.log("[Alerting] Would send email to:", email, {
     subject: `[${alert.level.toUpperCase()}] ${alert.title}`,
     body: alert.message,
   });
