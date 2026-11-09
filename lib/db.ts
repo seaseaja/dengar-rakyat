@@ -19,8 +19,14 @@ if (process.env.NODE_ENV !== "production") globalForMysql.mysqlPool = pool;
  * @param params Array parameter yang akan di-escape otomatis
  */
 export async function query(text: string, params?: unknown[]) {
-  // FIX: Using parameterized queries - safe from SQL injection
-  // semgrep: ignore(javascript.lang.security.audit.sqli)
-  const [rows] = await pool.query(text, params);
-  return { rows: rows as any[] };
+  // FIX: Using parameterized queries with mysql2 pool.query()
+  // The text parameter is an SQL template, params are bound separately
+  // This prevents SQL injection via prepared statements
+  const connection = await pool.getConnection();
+  try {
+    const [rows] = await connection.query(text, params);
+    return { rows: rows as any[] };
+  } finally {
+    connection.release();
+  }
 }

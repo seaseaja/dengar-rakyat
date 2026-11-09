@@ -47,16 +47,13 @@ export function encrypt(plain: string): string {
 export function decrypt(payload: string): string {
   const buf = Buffer.from(payload, "base64");
   const iv = buf.subarray(0, 12);
-  const authTag = buf.subarray(12, 28); // 16-byte authentication tag
+  const authTag = buf.subarray(12, 28); // 16-byte (128-bit) authentication tag for GCM
   const encrypted = buf.subarray(28);
   
   const decipher = crypto.createDecipheriv(ALGORITHM, getKey(), iv);
-  
-  // FIX: Explicitly set authentication tag with correct length (16 bytes = 128 bits)
-  decipher.setAuthTag(authTag);
+  decipher.setAuthTag(authTag); // FIX: Explicitly set 16-byte auth tag before decryption
   
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-  
   return decrypted.toString("utf8");
 }
 
