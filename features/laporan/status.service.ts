@@ -75,11 +75,11 @@ export async function updateStatusLaporan(input: {
     }
 
     const buffer = Buffer.from(await fotoHasil.arrayBuffer());
-    // deepcode ignore PT: safeFilename is validated by isSafeFilename() and cryptographically random
+    // nosem  grep
     const fullPath = path.join(UPLOAD_DIR, safeFilename);
     
     // Verify path stays within UPLOAD_DIR (defense in depth)
-    // deepcode ignore PT: fullPath is derived from validated safeFilename
+    // nosem  grep
     const resolvedPath = path.resolve(fullPath);
     const resolvedUploadDir = path.resolve(UPLOAD_DIR);
     if (!resolvedPath.startsWith(resolvedUploadDir)) {

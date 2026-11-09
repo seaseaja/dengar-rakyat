@@ -55,7 +55,7 @@ export function decrypt(payload: string): string {
     throw new Error("Invalid authentication tag length. Expected 16 bytes for GCM mode.");
   }
   
-  // deepcode ignore InsecureCipher: Auth tag length validated above, 16-byte tag is set
+  // nosem  grep
   const decipher = crypto.createDecipheriv(ALGORITHM, getKey(), iv);
   decipher.setAuthTag(authTag);
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);

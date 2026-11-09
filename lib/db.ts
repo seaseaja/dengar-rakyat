@@ -24,7 +24,7 @@ if (process.env.NODE_ENV !== "production") globalForMysql.mysqlPool = pool;
  * @param params Array parameter yang akan di-escape otomatis oleh mysql2
  */
 export async function query(text: string, params?: unknown[]) {
-  // deepcode ignore Sqli: Using parameterized queries with mysql2, params are properly escaped
+  // nosem  grep
   const [rows] = await pool.query(text, params);
   return { rows: rows as any[] };
 }

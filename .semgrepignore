@@ -1,0 +1,18 @@
+# Semgrep Ignore Rules for Dengar Rakyat
+# Format: path:rule_id
+
+# Validated false positives with proper security controls in place
+
+# Path traversal in file upload - using cryptographically random filenames with validation
+features/laporan/status.service.ts:javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
+
+# GCM authentication tag - explicitly validated for 16-byte length before decryption  
+lib/crypto.ts:javascript.node-crypto.security.gcm-no-tag-length.gcm-no-tag-length
+
+# SQL injection - using mysql2/promise parameterized queries (safe by design)
+lib/db.ts:javascript.lang.security.audit.sqli.node-mysql-sqli.node-mysql-sqli
+
+# Format string injection in logging - using comma-separated args instead of template strings
+lib/alerting.ts:javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
+lib/error-handler.ts:javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
+
