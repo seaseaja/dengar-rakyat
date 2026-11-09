@@ -99,17 +99,28 @@ export async function findLaporanById(id: number, userId?: number, wilayahIds?: 
   `;
   const params: any[] = [id];
   
-  // Ownership check (user can only see their own laporan)
+  // Authorization check: must match ONE of the conditions
+  const authConditions: string[] = [];
+  
+  // Condition 1: Ownership (user can see their own laporan)
   if (userId) {
-    sql += ` AND l.user_id = ?`;
+    authConditions.push(`l.user_id = ?`);
     params.push(userId);
   }
   
-  // OR wilayah check (PEMDA/PUSAT can see laporan in their wilayah)
+  // Condition 2: Wilayah membership (PEMDA/PUSAT can see laporan in their wilayah)
   if (wilayahIds && wilayahIds.length > 0) {
     const placeholders = wilayahIds.map(() => '?').join(',');
-    sql += ` OR l.wilayah_id IN (${placeholders})`;
+    authConditions.push(`l.wilayah_id IN (${placeholders})`);
     params.push(...wilayahIds);
+  }
+  
+  // Combine with OR only if BOTH conditions exist, otherwise require at least one
+  if (authConditions.length > 0) {
+    sql += ` AND (${authConditions.join(' OR ')})`;
+  } else {
+    // No authorization params provided - deny access
+    return null;
   }
   
   const r = await query(sql, params);
