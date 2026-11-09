@@ -1,0 +1,6 @@
+projectKey=dengar-rakyat-testing
+serverUrl=http://localhost:9000
+serverVersion=26.11.0.134175
+dashboardUrl=http://localhost:9000/dashboard?id=dengar-rakyat-testing
+ceTaskId=5e1acde4-1626-4bd9-8d3c-3d22c020a21f
+ceTaskUrl=http://localhost:9000/api/ce/task?id=5e1acde4-1626-4bd9-8d3c-3d22c020a21f
