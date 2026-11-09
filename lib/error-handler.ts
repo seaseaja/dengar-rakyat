@@ -30,7 +30,9 @@ export function handleApiError(
   const isDevelopment = process.env.NODE_ENV === "development";
 
   // Log full error server-side (with timestamp & context)
-  console.error(`[API Error${context ? ` - ${context}` : ""}] ${new Date().toISOString()}:`, error);
+  // FIX: Avoid format string injection - use proper format strings
+  const contextStr = context ? ` - ${context.replace(/%/g, "%%")}` : "";
+  console.error(`[API Error${contextStr}] ${new Date().toISOString()}:`, error);
 
   // Determine error type
   if (error instanceof ApiError) {
