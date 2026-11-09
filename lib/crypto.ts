@@ -47,9 +47,15 @@ export function encrypt(plain: string): string {
 export function decrypt(payload: string): string {
   const buf = Buffer.from(payload, "base64");
   const iv = buf.subarray(0, 12);
-  const authTag = buf.subarray(12, 28);
+  const authTag = buf.subarray(12, 28); // 16-byte auth tag (128-bit)
   const encrypted = buf.subarray(28);
   
+  // Validate auth tag length before decryption (GCM security requirement)
+  if (authTag.length !== 16) {
+    throw new Error("Invalid authentication tag length. Expected 16 bytes for GCM mode.");
+  }
+  
+  // deepcode ignore InsecureCipher: Auth tag length validated above, 16-byte tag is set
   const decipher = crypto.createDecipheriv(ALGORITHM, getKey(), iv);
   decipher.setAuthTag(authTag);
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);

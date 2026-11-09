@@ -19,8 +19,8 @@ export interface Alert {
 export async function sendAlert(alert: Alert): Promise<void> {
   const timestamp = alert.timestamp || new Date();
 
-  // Log to console (always)
-  console.log(`[ALERT ${alert.level.toUpperCase()}] ${alert.title}`, {
+  // Log to console (always) - use safe format to prevent format string injection
+  console.log("[ALERT] Level:", alert.level.toUpperCase(), "Title:", alert.title, {
     message: alert.message,
     data: alert.data,
     timestamp,
@@ -93,7 +93,8 @@ async function sendEmailAlert(alert: Alert, timestamp: Date): Promise<void> {
   if (!email) return;
 
   // TODO: Implement email sending (via SendGrid, SES, etc)
-  console.log(`[Alerting] Would send email to ${email}:`, {
+  // Use safe format to prevent format string injection
+  console.log("[Alerting] Would send email to:", email, {
     subject: `[${alert.level.toUpperCase()}] ${alert.title}`,
     body: alert.message,
   });

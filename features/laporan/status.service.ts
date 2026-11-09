@@ -2,10 +2,33 @@ import { writeFile } from "fs/promises";
 import path from "path";
 import { query } from "@/lib/db";
 import type { ServiceResult } from "./laporan.types";
+import { randomBytes } from "crypto";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "laporan");
 
 const STATUS_FLOW = ["Diterima", "Diverifikasi", "Diproses", "Selesai"];
+
+// Allowed MIME types for file uploads
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+/**
+ * Validate filename contains only safe characters
+ * Prevents path traversal attacks
+ */
+function isSafeFilename(filename: string): boolean {
+  // Only allow alphanumeric, dash, underscore, and dot
+  return /^[a-zA-Z0-9_\-\.]+$/.test(filename) && !filename.includes("..");
+}
+
+/**
+ * Generate safe random filename
+ */
+function generateSafeFilename(originalExt: string): string {
+  const timestamp = Date.now();
+  const random = randomBytes(8).toString("hex");
+  return `hasil-${timestamp}-${random}${originalExt}`;
+}
 
 export async function updateStatusLaporan(input: {
   laporanId: string;
@@ -28,11 +51,43 @@ export async function updateStatusLaporan(input: {
 
   let fotoHasilPath: string | null = null;
   if (fotoHasil && fotoHasil.size > 0) {
-    // Sengaja TANPA validasi tipe/isi file — sama kayak celah Modul 3
+    // Validate file type
+    if (!ALLOWED_MIME_TYPES.includes(fotoHasil.type)) {
+      return { 
+        ok: false, 
+        status: 400, 
+        error: "Tipe file tidak diizinkan. Hanya JPEG, PNG, dan WebP yang diperbolehkan" 
+      };
+    }
+
+    // Validate file size
+    if (fotoHasil.size > MAX_FILE_SIZE) {
+      return { ok: false, status: 400, error: "Ukuran file terlalu besar (maksimal 5MB)" };
+    }
+
+    // Use safe random filename instead of user input
+    const ext = path.extname(fotoHasil.name).toLowerCase();
+    const safeFilename = generateSafeFilename(ext);
+    
+    // Validate generated filename is safe
+    if (!isSafeFilename(safeFilename)) {
+      return { ok: false, status: 500, error: "Gagal menghasilkan nama file yang aman" };
+    }
+
     const buffer = Buffer.from(await fotoHasil.arrayBuffer());
-    const filename = `hasil-${Date.now()}-${fotoHasil.name}`;
-    await writeFile(path.join(UPLOAD_DIR, filename), buffer);
-    fotoHasilPath = `/uploads/laporan/${filename}`;
+    // deepcode ignore PT: safeFilename is validated by isSafeFilename() and cryptographically random
+    const fullPath = path.join(UPLOAD_DIR, safeFilename);
+    
+    // Verify path stays within UPLOAD_DIR (defense in depth)
+    // deepcode ignore PT: fullPath is derived from validated safeFilename
+    const resolvedPath = path.resolve(fullPath);
+    const resolvedUploadDir = path.resolve(UPLOAD_DIR);
+    if (!resolvedPath.startsWith(resolvedUploadDir)) {
+      return { ok: false, status: 400, error: "Path traversal terdeteksi" };
+    }
+
+    await writeFile(fullPath, buffer);
+    fotoHasilPath = `/uploads/laporan/${safeFilename}`;
   }
 
   // Sengaja: UPDATE langsung di tabel utama, bukan append-only — celah A08
