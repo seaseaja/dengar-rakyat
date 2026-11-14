@@ -47,11 +47,7 @@ export function encrypt(plain: string): string {
 export function decrypt(payload: string): string {
   const buf = Buffer.from(payload, "base64");
   const iv = buf.subarray(0, 12);
-<<<<<<< HEAD
   const authTag = buf.subarray(12, 28); // 16-byte (128-bit) authentication tag for GCM
-=======
-  const authTag = buf.subarray(12, 28); // 16-byte auth tag (128-bit)
->>>>>>> origin/main
   const encrypted = buf.subarray(28);
   
   // Validate auth tag length before decryption (GCM security requirement)

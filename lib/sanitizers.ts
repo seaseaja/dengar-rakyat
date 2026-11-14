@@ -51,7 +51,7 @@ export function sanitizeFilename(filename: string): string {
   safe = safe.replace(/[\/\\]/g, "");
   
   // Remove null bytes
-  safe = safe.replace(/\0/g, "");
+  safe = safe.replaceAll("\0", "");
   
   // Keep only alphanumeric, dash, underscore, dot
   safe = safe.replace(/[^a-zA-Z0-9\-_\.]/g, "_");
@@ -117,25 +117,41 @@ export function sanitizePhone(phone: string): string {
  * Sanitize integer
  */
 export function sanitizeInteger(value: any): number | null {
-  const num = parseInt(value, 10);
-  return isNaN(num) ? null : num;
+  const num = Number.parseInt(value, 10);
+  return Number.isNaN(num) ? null : num;
 }
 
 /**
  * Sanitize float
  */
 export function sanitizeFloat(value: any): number | null {
-  const num = parseFloat(value);
-  return isNaN(num) ? null : num;
+  const num = Number.parseFloat(value);
+  return Number.isNaN(num) ? null : num;
 }
 
 /**
  * Strip all HTML tags (aggressive)
+ * Menggunakan linear single-pass parser O(n) tanpa regex untuk mencegah
+ * super-linear performance / catastrophic backtracking (SonarQube S5852).
  */
 export function stripHtml(html: string): string {
   if (!html || typeof html !== "string") return "";
 
-  return html.replace(/<[^>]*>/g, "");
+  let result = "";
+  let insideTag = false;
+
+  for (let i = 0; i < html.length; i++) {
+    const char = html[i];
+    if (char === "<") {
+      insideTag = true;
+    } else if (char === ">" && insideTag) {
+      insideTag = false;
+    } else if (!insideTag) {
+      result += char;
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -174,16 +190,15 @@ export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
 export function escapeSql(value: string): string {
   if (!value || typeof value !== "string") return "";
 
-  return value.replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, (char) => {
+  // Escape control characters secara aman tanpa regex control character (menghindari warning SonarQube S5855 / no-control-regex)
+  const sanitized = value
+    .replaceAll("\0", "\\0")
+    .replaceAll("\x08", "\\b")
+    .replaceAll("\x1a", "\\z");
+
+  // Escape karakter khusus SQL dan newline/carriage-return secara bersih tanpa karakter non-printable pada regex
+  return sanitized.replace(/[\n\r"'\\%]/g, (char) => {
     switch (char) {
-      case "\0":
-        return "\\0";
-      case "\x08":
-        return "\\b";
-      case "\x09":
-        return "\\t";
-      case "\x1a":
-        return "\\z";
       case "\n":
         return "\\n";
       case "\r":

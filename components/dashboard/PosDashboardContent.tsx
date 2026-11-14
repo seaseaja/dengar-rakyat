@@ -51,7 +51,7 @@ export default function PosDashboardContent() {
       }
     }
 
-    loadStats();
+    void loadStats();
   }, []);
 
   if (loading) {

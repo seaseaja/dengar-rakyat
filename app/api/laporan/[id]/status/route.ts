@@ -42,9 +42,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const { id } = await params;
-    const laporanId = parseInt(id);
+    const laporanId = Number.parseInt(id);
 
-    if (isNaN(laporanId)) {
+    if (Number.isNaN(laporanId)) {
       throw ApiError.badRequest("ID laporan tidak valid");
     }
 

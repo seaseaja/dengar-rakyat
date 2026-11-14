@@ -74,7 +74,7 @@ export default function PusatDashboard() {
       }
     }
     
-    loadStats();
+    void loadStats();
   }, []);
 
   if (loading) {

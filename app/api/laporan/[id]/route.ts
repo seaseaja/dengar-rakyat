@@ -24,9 +24,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const user = sessionResult.user;
     const { id } = await params;
-    const laporanId = parseInt(id);
+    const laporanId = Number.parseInt(id);
 
-    if (isNaN(laporanId)) {
+    if (Number.isNaN(laporanId)) {
       throw ApiError.badRequest("ID laporan tidak valid");
     }
 
@@ -59,10 +59,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         decryptedLaporan.deskripsi = decrypt(laporan.deskripsi_enc);
       }
       if (laporan.latitude_enc) {
-        decryptedLaporan.latitude = parseFloat(decrypt(laporan.latitude_enc));
+        decryptedLaporan.latitude = Number.parseFloat(decrypt(laporan.latitude_enc));
       }
       if (laporan.longitude_enc) {
-        decryptedLaporan.longitude = parseFloat(decrypt(laporan.longitude_enc));
+        decryptedLaporan.longitude = Number.parseFloat(decrypt(laporan.longitude_enc));
       }
     } catch (decryptError) {
       console.error("[LAPORAN] Decryption error:", decryptError);

@@ -29,7 +29,7 @@ export async function createLaporan(input: {
     const lat = Number(latitude);
     const lon = Number(longitude);
     
-    if (isNaN(lat) || isNaN(lon)) {
+    if (Number.isNaN(lat) || Number.isNaN(lon)) {
       return { ok: false, status: 400, error: "Koordinat GPS tidak valid" };
     }
     

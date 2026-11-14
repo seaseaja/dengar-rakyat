@@ -26,8 +26,8 @@ export async function registerUser(
     return { ok: false, status: 400, error: "NIK harus 16 digit angka" };
   }
 
-  // Validation: email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Validation: email format — menggunakan atomic-safe pattern tanpa nested quantifier
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@.]+$/;
   if (!emailRegex.test(email)) {
     return { ok: false, status: 400, error: "Format email tidak valid" };
   }

@@ -31,13 +31,13 @@ export default function AdminTools({ role, kotaKabId }: AdminToolsProps) {
   useEffect(() => {
     if (role === "PUSAT") {
       // Load all kota/kab
-      fetch("/api/admin/kota-kab")
+      void fetch("/api/admin/kota-kab")
         .then((r) => r.json())
         .then((d) => Array.isArray(d) && setKotaKabData(d))
         .finally(() => setLoading(false));
     } else if (role === "PEMDA" && kotaKabId) {
       // Load kecamatan in this kota/kab
-      fetch(`/api/admin/kecamatan?kotaKabId=${kotaKabId}`)
+      void fetch(`/api/admin/kecamatan?kotaKabId=${kotaKabId}`)
         .then((r) => r.json())
         .then((d) => Array.isArray(d) && setKecamatanData(d))
         .finally(() => setLoading(false));

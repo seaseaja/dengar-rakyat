@@ -11,7 +11,7 @@ export default function LaporanList({ mode }: { mode: "mine" | "all" }) {
 
   useEffect(() => {
     const url = mode === "mine" ? "/api/laporan?mine=1" : "/api/laporan";
-    fetch(url)
+    void fetch(url)
       .then((r) => r.json())
       .then((d) => Array.isArray(d) && setData(d))
       .finally(() => setLoading(false));

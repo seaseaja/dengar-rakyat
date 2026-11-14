@@ -10,7 +10,7 @@ export default function LaporanDetail({ id, showStatusForm }: { id: string; show
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/laporan/${id}`)
+    void fetch(`/api/laporan/${id}`)
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) {

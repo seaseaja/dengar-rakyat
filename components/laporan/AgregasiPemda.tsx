@@ -26,7 +26,7 @@ export default function AgregasiPemda({ kotaKabId }: { kotaKabId: number | null 
       setLoading(false);
       return;
     }
-    fetch(`/api/admin/laporan-agregasi?kotaKabId=${kotaKabId}`)
+    void fetch(`/api/admin/laporan-agregasi?kotaKabId=${kotaKabId}`)
       .then((r) => r.json())
       .then((d) => Array.isArray(d) && setData(d))
       .finally(() => setLoading(false));

@@ -113,8 +113,9 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
 
         {user.wilayah_nama && (
           <div>
-            <label className="block text-sm font-medium text-gray-700">Wilayah</label>
+            <label htmlFor="wilayah" className="block text-sm font-medium text-gray-700">Wilayah</label>
             <input
+              id="wilayah"
               type="text"
               value={user.wilayah_nama}
               disabled

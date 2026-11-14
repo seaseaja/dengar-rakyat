@@ -32,14 +32,14 @@ export default function InsightsSummary({
   const insights: Insight[] = [];
 
   // Insight 1: Completion rate
-  if (parseFloat(persentaseSelesai) >= 80) {
+  if (Number.parseFloat(persentaseSelesai) >= 80) {
     insights.push({
       icon: "🎯",
       title: "Target Tercapai",
       description: `${persentaseSelesai}% laporan telah diselesaikan. Performa sangat baik!`,
       color: "green",
     });
-  } else if (parseFloat(persentaseSelesai) >= 50) {
+  } else if (Number.parseFloat(persentaseSelesai) >= 50) {
     insights.push({
       icon: "⚡",
       title: "Progress Moderate",

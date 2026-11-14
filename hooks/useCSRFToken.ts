@@ -13,7 +13,7 @@ export function useCSRFToken() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCsrfToken();
+    void fetchCsrfToken();
   }, []);
 
   const fetchCsrfToken = async () => {
@@ -41,7 +41,7 @@ export function useCSRFToken() {
   };
 
   const refreshToken = () => {
-    fetchCsrfToken();
+    void fetchCsrfToken();
   };
 
   return {

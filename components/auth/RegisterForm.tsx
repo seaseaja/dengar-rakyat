@@ -51,7 +51,7 @@ export default function RegisterForm() {
   // Provinsi: di-fetch SEKALI saat halaman dibuka
   useEffect(() => {
     let active = true;
-    fetchWilayah("provinsi").then((data) => {
+    void fetchWilayah("provinsi").then((data) => {
       if (active) setProvinsi(data);
     });
     return () => {

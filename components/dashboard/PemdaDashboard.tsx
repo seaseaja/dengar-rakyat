@@ -77,7 +77,7 @@ export default function PemdaDashboard({
       }
     }
 
-    loadStats();
+    void loadStats();
   }, [kotaKabId]);
 
   if (!kotaKabId) {

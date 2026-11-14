@@ -81,7 +81,7 @@ export function validateCsrfToken(
   }
 
   // Check expiry (1 hour, NOT 24 hours - spec says token rotasi 1 jam)
-  const tokenTime = parseInt(timestamp, 10);
+  const tokenTime = Number.parseInt(timestamp, 10);
   const now = Date.now();
   const maxAge = 60 * 60 * 1000; // 1 hour
 

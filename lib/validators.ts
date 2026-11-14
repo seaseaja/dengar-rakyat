@@ -18,8 +18,8 @@ export function validateEmail(email: string): ValidationResult {
     return { valid: false, error: "Email wajib diisi" };
   }
 
-  // RFC 5322 simplified
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // RFC 5322 simplified — menggunakan atomic-safe pattern tanpa nested quantifier
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@.]+$/;
   
   if (!emailRegex.test(email)) {
     return { valid: false, error: "Format email tidak valid" };
@@ -48,8 +48,8 @@ export function validateNik(nik: string): ValidationResult {
   }
 
   // Basic validation: date part
-  const dd = parseInt(nik.substring(6, 8), 10);
-  const mm = parseInt(nik.substring(8, 10), 10);
+  const dd = Number.parseInt(nik.substring(6, 8), 10);
+  const mm = Number.parseInt(nik.substring(8, 10), 10);
   
   // DD can be 01-31 for male, 41-71 for female
   const day = dd > 40 ? dd - 40 : dd;
@@ -169,9 +169,9 @@ export function validateInteger(
   value: any,
   fieldName: string = "Field"
 ): ValidationResult {
-  const num = parseInt(value, 10);
+  const num = Number.parseInt(value, 10);
 
-  if (isNaN(num)) {
+  if (Number.isNaN(num)) {
     return { valid: false, error: `${fieldName} harus berupa angka` };
   }
 
@@ -204,9 +204,9 @@ export function validateCoordinates(
  * Validate wilayah_id (must be positive integer)
  */
 export function validateWilayahId(wilayahId: any): ValidationResult {
-  const num = parseInt(wilayahId, 10);
+  const num = Number.parseInt(wilayahId, 10);
 
-  if (isNaN(num) || num < 1) {
+  if (Number.isNaN(num) || num < 1) {
     return { valid: false, error: "Wilayah tidak valid" };
   }
 

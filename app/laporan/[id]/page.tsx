@@ -34,7 +34,7 @@ export default async function LaporanDetailPage({
           <span>Kembali ke Laporan</span>
         </Link>
 
-        <LaporanDetail laporanId={parseInt(id)} />
+        <LaporanDetail laporanId={Number.parseInt(id)} />
       </main>
     </div>
   );

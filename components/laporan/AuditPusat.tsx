@@ -32,7 +32,7 @@ export default function AuditPusat() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
+    void Promise.all([
       fetch("/api/admin/laporan-agregasi-nasional").then((r) => r.json()),
       fetch("/api/laporan").then((r) => r.json()),
     ])
