@@ -4,9 +4,9 @@ import { FormEvent, useState } from "react";
 import FormField from "@/components/ui/FormField";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
-import { postJson } from "@/lib/api-client";
 
 export default function ChangePasswordForm() {
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -17,7 +17,10 @@ export default function ChangePasswordForm() {
     setError("");
     setMessage("");
     setLoading(true);
-    const { ok, data } = await postJson("/api/auth/change-password", { newPassword });
+    const csrf = await fetch("/api/auth/csrf", { credentials: "include" }).then((r) => r.json());
+    const response = await fetch("/api/auth/change-password", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf.token }, body: JSON.stringify({ currentPassword, newPassword }) });
+    const data = await response.json().catch(() => ({}));
+    const ok = response.ok;
     setLoading(false);
     if (!ok) {
       setError(data.error ?? "Terjadi kesalahan");
@@ -33,6 +36,7 @@ export default function ChangePasswordForm() {
       {error && <Alert type="error">{error}</Alert>}
 
       <FormField id="newPassword" label="Password Baru" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+      <FormField id="currentPassword" label="Password Saat Ini" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
 
       <Button type="submit" disabled={loading}>
         {loading ? "Memproses..." : "Ubah Password"}

@@ -5,7 +5,7 @@
  * - Timing-safe operations
  */
 
-import { query } from "@/lib/db";
+import { pool, query } from "@/lib/db";
 import { hmacHash } from "@/lib/crypto";
 import type { RegisterInput, Role, User } from "./auth.types";
 
@@ -23,19 +23,6 @@ export async function findUserByEmail(email: string) {
 export async function findUserByNik(nik: string) {
   const nikHash = hmacHash(nik);
   const r = await query("SELECT * FROM users WHERE nik_hash = ?", [nikHash]);
-  return r.rows as User[];
-}
-
-/**
- * DEPRECATED: Use verifyUserCredentials in login.service.ts instead
- * This query is insecure (plaintext password comparison)
- */
-export async function findUserByCredentials(email: string, password: string) {
-  // Kept for backward compatibility, but should not be used
-  const r = await query(
-    "SELECT * FROM users WHERE email = ? AND password = ?",
-    [email, password]
-  );
   return r.rows as User[];
 }
 
@@ -148,18 +135,51 @@ export async function findResetToken(tokenHash: string) {
 /**
  * Mark reset token as used
  */
-export async function markTokenUsed(tokenHash: string) {
-  await query(
-    "UPDATE password_resets SET used_at = NOW() WHERE token_hash = ?",
-    [tokenHash]
-  );
-}
-
 /**
  * Update user password (accepts Argon2id hash)
  */
-export async function updatePassword(userId: number, passwordHash: string) {
-  await query("UPDATE users SET password = ? WHERE id = ?", [passwordHash, userId]);
+export async function updatePasswordAndRotateSessions(
+  userId: number, oldHash: string, newHash: string, newSessionId: string, expiresAt: Date
+): Promise<boolean> {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [updated] = await connection.execute(
+      "UPDATE users SET password=? WHERE id=? AND password=?",
+      [newHash, userId, oldHash]
+    );
+    if ((updated as { affectedRows: number }).affectedRows !== 1) { await connection.rollback(); return false; }
+    await connection.execute("DELETE FROM sessions WHERE user_id=?", [userId]);
+    await connection.execute("INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)", [newSessionId, userId, expiresAt]);
+    await connection.commit();
+    return true;
+  } catch (error) {
+    await connection.rollback().catch(() => undefined);
+    throw error;
+  } finally { connection.release(); }
+}
+
+/** Consume a reset token and change password atomically; concurrent replays lose. */
+export async function consumePasswordReset(tokenHash: string, passwordHash: string): Promise<number | null> {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.execute(
+      "SELECT id, user_id FROM password_resets WHERE token_hash=? AND expires_at>NOW() AND used_at IS NULL FOR UPDATE",
+      [tokenHash]
+    );
+    const token = (rows as Array<{ id: number; user_id: number }>)[0];
+    if (!token) { await connection.rollback(); return null; }
+    await connection.execute("UPDATE users SET password=? WHERE id=?", [passwordHash, token.user_id]);
+    const [updated] = await connection.execute("UPDATE password_resets SET used_at=NOW() WHERE id=? AND used_at IS NULL", [token.id]);
+    if ((updated as { affectedRows: number }).affectedRows !== 1) { await connection.rollback(); return null; }
+    await connection.execute("DELETE FROM sessions WHERE user_id=?", [token.user_id]);
+    await connection.commit();
+    return token.user_id;
+  } catch (error) {
+    await connection.rollback().catch(() => undefined);
+    throw error;
+  } finally { connection.release(); }
 }
 
 
@@ -170,9 +190,10 @@ export async function findSessionById(sessionId: string) {
   const r = await query(
     `SELECT 
       s.id, s.user_id, s.expires_at, s.last_activity_at,
-      u.email, u.nama, u.role, u.wilayah_id
+      u.email, u.nama, u.role, u.wilayah_id, w.nama AS wilayah_nama
      FROM sessions s
      JOIN users u ON u.id = s.user_id
+     LEFT JOIN wilayah w ON w.id = u.wilayah_id
      WHERE s.id = ?`,
     [sessionId]
   );

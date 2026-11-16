@@ -1,102 +1,66 @@
-/**
- * Pusat Dashboard Statistics API
- * GET stats for national-level dashboard
- */
-
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { getCurrentUser } from "@/features/auth/session.service";
-import { SESSION_COOKIE_NAME } from "@/lib/cookies";
 import { query } from "@/lib/db";
+
+function numericRows<T extends Record<string, unknown>>(rows: T[]) {
+  return rows.map((row) => ({
+    ...row,
+    count: Number(row.count ?? 0),
+    ...(row.selesai !== undefined ? { selesai: Number(row.selesai ?? 0) } : {}),
+  }));
+}
 
 export async function GET() {
   try {
-    // Auth check
-    const cookieStore = await cookies();
-    const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-    const user = await getCurrentUser(sessionId);
-
-    console.log("[pusat-stats] SessionID:", sessionId?.substring(0, 10), "User:", user?.email, "Role:", user?.role);
-
-    if (!user || user.role !== "pusat") {
-      return NextResponse.json({ error: "Unauthorized", debug: { hasUser: !!user, role: user?.role } }, { status: 403 });
+    const user = await getCurrentUser();
+    if (!user || (user.role || "").toLowerCase() !== "pusat") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Daily trend (last 30 days)
-    const dailyTrendResult = await query(
-      `SELECT DATE(created_at) as date, COUNT(*) as count
-       FROM laporan
-       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-       GROUP BY DATE(created_at)
-       ORDER BY date ASC`
-    );
-
-    // Monthly trend (last 12 months)
-    const monthlyTrendResult = await query(
-      `SELECT DATE_FORMAT(created_at, '%Y-%m') as date, COUNT(*) as count
-       FROM laporan
-       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-       GROUP BY DATE_FORMAT(created_at, '%Y-%m')
-       ORDER BY date ASC`
-    );
-
-    // Top categories (top 10)
-    const topCategoriesResult = await query(
-      `SELECT kategori, COUNT(*) as count
-       FROM laporan
-       GROUP BY kategori
-       ORDER BY count DESC
-       LIMIT 10`
-    );
-
-    // Age distribution (mock data for now - NIK encrypted)
-    const ageDistributionResult = await query(
-      `SELECT 
-        CASE
-          WHEN YEAR(CURDATE()) - YEAR(u.created_at) < 25 THEN '< 25'
-          WHEN YEAR(CURDATE()) - YEAR(u.created_at) < 35 THEN '25-34'
-          WHEN YEAR(CURDATE()) - YEAR(u.created_at) < 45 THEN '35-44'
-          WHEN YEAR(CURDATE()) - YEAR(u.created_at) < 55 THEN '45-54'
-          ELSE '55+'
-        END as age_group,
-        COUNT(*) as count
-       FROM laporan l
-       JOIN users u ON u.id = l.user_id
-       GROUP BY age_group
-       ORDER BY age_group`
-    );
-
-    // Status comparison
-    const statusComparisonResult = await query(
-      `SELECT status, COUNT(*) as count
-       FROM laporan
-       GROUP BY status
-       ORDER BY status`
-    );
-
-    // Wilayah heatmap (top 10 wilayah dengan laporan terbanyak)
-    const wilayahHeatmapResult = await query(
-      `SELECT w.nama as wilayah, COUNT(*) as count
-       FROM laporan l
-       JOIN wilayah w ON w.id = l.wilayah_id
-       GROUP BY w.id, w.nama
-       ORDER BY count DESC
-       LIMIT 10`
-    );
+    const [daily, monthly, categories, statuses, provinces] = await Promise.all([
+      query(`WITH RECURSIVE days (day) AS (
+        SELECT DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+        UNION ALL SELECT DATE_ADD(day, INTERVAL 1 DAY) FROM days WHERE day < CURDATE()
+      )
+      SELECT DATE_FORMAT(days.day, '%Y-%m-%d') AS date, COUNT(l.id) AS count
+      FROM days LEFT JOIN laporan l ON DATE(l.created_at) = days.day
+      GROUP BY days.day ORDER BY days.day`),
+      query(`WITH RECURSIVE months (month_start) AS (
+        SELECT DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 11 MONTH)
+        UNION ALL SELECT DATE_ADD(month_start, INTERVAL 1 MONTH) FROM months
+        WHERE month_start < DATE_FORMAT(CURDATE(), '%Y-%m-01')
+      )
+      SELECT DATE_FORMAT(months.month_start, '%Y-%m') AS date, COUNT(l.id) AS count
+      FROM months LEFT JOIN laporan l
+        ON l.created_at >= months.month_start
+        AND l.created_at < DATE_ADD(months.month_start, INTERVAL 1 MONTH)
+      GROUP BY months.month_start ORDER BY months.month_start`),
+      query(`SELECT kategori, COUNT(*) AS count FROM laporan
+        GROUP BY kategori ORDER BY count DESC, kategori ASC LIMIT 10`),
+      query(`SELECT status, COUNT(*) AS count FROM laporan GROUP BY status ORDER BY status`),
+      query(`WITH RECURSIVE province_tree (province_id, wilayah_id) AS (
+        SELECT id, id FROM wilayah WHERE tipe = 'provinsi'
+        UNION DISTINCT
+        SELECT tree.province_id, child.id
+        FROM province_tree tree JOIN wilayah child ON child.parent_id = tree.wilayah_id
+      )
+      SELECT root.nama AS provinsi, COUNT(l.id) AS count,
+        SUM(CASE WHEN l.status = 'Selesai' THEN 1 ELSE 0 END) AS selesai
+      FROM province_tree tree
+      JOIN wilayah root ON root.id = tree.province_id
+      LEFT JOIN laporan l ON l.wilayah_id = tree.wilayah_id
+      GROUP BY root.id, root.nama ORDER BY count DESC, root.nama ASC LIMIT 15`),
+    ]);
 
     return NextResponse.json({
-      dailyTrend: dailyTrendResult.rows,
-      monthlyTrend: monthlyTrendResult.rows,
-      topCategories: topCategoriesResult.rows,
-      ageDistribution: ageDistributionResult.rows,
-      statusComparison: statusComparisonResult.rows,
-      provinsiHeatmap: wilayahHeatmapResult.rows,
+      dailyTrend: numericRows(daily.rows),
+      monthlyTrend: numericRows(monthly.rows),
+      topCategories: numericRows(categories.rows),
+      statusComparison: numericRows(statuses.rows),
+      provinsiHeatmap: numericRows(provinces.rows),
     });
   } catch (error) {
-    console.error("[pusat-stats] Error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("[pusat-stats] Failed to load national statistics", error);
+    return NextResponse.json({ error: "Gagal memuat statistik nasional" }, { status: 500 });
   }
 }

@@ -8,14 +8,16 @@ export interface KecamatanWithPetugas {
 }
 
 export async function listKecamatanByKotaKab(kotaKabId: string) {
+  const id = Number(kotaKabId);
+  if (!Number.isSafeInteger(id) || id <= 0) return [];
   const r = await query(`
     SELECT k.id, k.nama,
            u.nama AS petugas_nama, u.email AS petugas_email
     FROM wilayah k
     LEFT JOIN users u ON u.wilayah_id = k.id AND u.role = 'petugas_pos'
-    WHERE k.parent_id = ${kotaKabId} AND k.tipe = 'kecamatan'
+    WHERE k.parent_id = ? AND k.tipe = 'kecamatan'
     ORDER BY k.nama
-  `);
+  `, [id]);
   return r.rows as KecamatanWithPetugas[];
 }
 

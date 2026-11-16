@@ -11,8 +11,10 @@ import { destroySession, getSessionWithUser } from "@/features/auth/session.serv
 import { SESSION_COOKIE_NAME, getClearCookieOptions } from "@/lib/cookies";
 import { logAuthEvent } from "@/features/audit/audit.service";
 import { handleApiError } from "@/lib/error-handler";
+import { validateCsrfToken } from "@/lib/csrf";
+import { getClientIP } from "@/lib/request-context";
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const cookieStore = await cookies();
     const headersList = await headers();
@@ -23,6 +25,9 @@ export async function POST() {
         { error: "No active session" },
         { status: 400 }
       );
+    }
+    if (!validateCsrfToken(headersList.get("x-csrf-token") || "", sessionId).valid) {
+      return NextResponse.json({ error: "CSRF token tidak valid" }, { status: 403 });
     }
 
     // Get session info for audit log (before deletion)
@@ -38,7 +43,7 @@ export async function POST() {
         user_id: session.user_id,
         user_email: session.email,
         user_role: session.role,
-        ip_address: headersList.get("x-forwarded-for") || undefined,
+        ip_address: getClientIP(req),
         user_agent: headersList.get("user-agent") || undefined,
         status: "success",
       });

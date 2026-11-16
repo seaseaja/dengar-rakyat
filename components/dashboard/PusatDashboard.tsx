@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   LineChart,
   Line,
@@ -18,19 +18,19 @@ import {
 } from "recharts";
 import { format, parseISO } from "date-fns";
 import InsightsSummary from "./InsightsSummary";
+import { useDashboardStats } from "./useDashboardStats";
 
 const COLORS = {
-  primary: "#3b82f6",
+  primary: "#38bdf8",
   success: "#10b981",
   warning: "#f59e0b",
   danger: "#ef4444",
   purple: "#8b5cf6",
-  indigo: "#6366f1",
+  indigo: "#a78bfa",
   pink: "#ec4899",
   teal: "#14b8a6",
 };
 
-const PIE_COLORS = [COLORS.primary, COLORS.success, COLORS.warning, COLORS.purple];
 const STATUS_COLORS: Record<string, string> = {
   Diterima: COLORS.warning,
   Diverifikasi: COLORS.primary,
@@ -42,40 +42,13 @@ interface StatsData {
   dailyTrend: Array<{ date: string; count: number }>;
   monthlyTrend: Array<{ date: string; count: number }>;
   topCategories: Array<{ kategori: string; count: number }>;
-  ageDistribution: Array<{ age_group: string; count: number }>;
   statusComparison: Array<{ status: string; count: number }>;
-  provinsiHeatmap: Array<{ provinsi: string; count: number }>;
+  provinsiHeatmap: Array<{ provinsi: string; count: number; selesai: number }>;
 }
 
 export default function PusatDashboard() {
-  const [stats, setStats] = useState<StatsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: stats, loading, error } = useDashboardStats<StatsData>("/api/dashboard/pusat-stats");
   const [timeRange, setTimeRange] = useState<"daily" | "monthly">("daily");
-
-  useEffect(() => {
-    async function loadStats() {
-      try {
-        const res = await fetch("/api/dashboard/pusat-stats", {
-          credentials: "include",
-        });
-        
-        if (!res.ok) {
-          throw new Error(`Failed to load stats: ${res.status}`);
-        }
-        
-        const data = await res.json();
-        setStats(data);
-      } catch (e) {
-        console.error("Error loading stats:", e);
-        setError(e instanceof Error ? e.message : "Gagal memuat data");
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    void loadStats();
-  }, []);
 
   if (loading) {
     return (
@@ -121,15 +94,22 @@ export default function PusatDashboard() {
   const persentaseSelesai = totalLaporan > 0 ? ((totalSelesai / totalLaporan) * 100).toFixed(1) : "0";
 
   // Comparison data (merah vs hijau)
-  const comparisonData = [
-    { name: "Belum Selesai", value: totalPending, color: COLORS.danger },
-    { name: "Selesai", value: totalSelesai, color: COLORS.success },
-  ];
+  const comparisonData = stats.statusComparison.map((item) => ({
+    name: item.status,
+    value: item.count,
+    color: STATUS_COLORS[item.status] || COLORS.primary,
+  }));
 
-  // Calculate trend direction (compare first vs last week)
-  const firstWeekAvg = trendData.slice(0, 7).reduce((sum, d) => sum + d.count, 0) / 7;
-  const lastWeekAvg = trendData.slice(-7).reduce((sum, d) => sum + d.count, 0) / 7;
-  const trendDirection = lastWeekAvg > firstWeekAvg * 1.1 ? "up" : lastWeekAvg < firstWeekAvg * 0.9 ? "down" : "stable";
+  const windowSize = timeRange === "daily" ? 7 : 3;
+  const previousWindow = trendData.slice(-(windowSize * 2), -windowSize);
+  const currentWindow = trendData.slice(-windowSize);
+  const previousAvg = previousWindow.reduce((sum, point) => sum + point.count, 0) / Math.max(previousWindow.length, 1);
+  const currentAvg = currentWindow.reduce((sum, point) => sum + point.count, 0) / Math.max(currentWindow.length, 1);
+  const trendDirection = currentAvg > previousAvg * 1.1 ? "up" : currentAvg < previousAvg * 0.9 ? "down" : "stable";
+  const provinceChartData = stats.provinsiHeatmap.map((row) => ({
+    ...row,
+    belum_selesai: Math.max(0, row.count - row.selesai),
+  }));
 
   return (
     <div className="space-y-6">
@@ -192,11 +172,11 @@ export default function PusatDashboard() {
         </div>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={formattedTrend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="dateLabel" stroke="#6b7280" style={{ fontSize: "12px" }} />
-            <YAxis stroke="#6b7280" style={{ fontSize: "12px" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis dataKey="dateLabel" stroke="#94a3b8" style={{ fontSize: "12px" }} />
+            <YAxis stroke="#94a3b8" style={{ fontSize: "12px" }} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px" }}
+              contentStyle={{ backgroundColor: "#0a142d", border: "1px solid #334155", borderRadius: "8px" }}
             />
             <Line type="monotone" dataKey="count" stroke={COLORS.primary} strokeWidth={3} dot={{ r: 4 }} />
           </LineChart>
@@ -205,7 +185,7 @@ export default function PusatDashboard() {
 
       {/* 2 Column Charts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Status Comparison (Merah vs Hijau) */}
+        {/* Report status distribution */}
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h3 className="mb-4 text-lg font-semibold text-gray-900">Perbandingan Status</h3>
           <ResponsiveContainer width="100%" height={280}>
@@ -215,7 +195,7 @@ export default function PusatDashboard() {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                label={(props: any) => `${props.name || ""} (${((props.percent || 0) * 100).toFixed(0)}%)`}
                 outerRadius={90}
                 fill="#8884d8"
                 dataKey="value"
@@ -229,27 +209,19 @@ export default function PusatDashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Age Distribution */}
+        {/* Province status totals */}
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">Statistik Usia Pelapor</h3>
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">Penyelesaian per Provinsi</h3>
           <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie
-                data={stats.ageDistribution}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ age_group, percent }) => `${age_group} (${(percent * 100).toFixed(0)}%)`}
-                outerRadius={90}
-                fill="#8884d8"
-                dataKey="count"
-              >
-                {stats.ageDistribution.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                ))}
-              </Pie>
+            <BarChart data={provinceChartData} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis type="number" />
+              <YAxis dataKey="provinsi" type="category" width={100} />
               <Tooltip />
-            </PieChart>
+              <Legend />
+              <Bar dataKey="selesai" name="Selesai" stackId="reports" fill={COLORS.success} />
+              <Bar dataKey="belum_selesai" name="Belum selesai" stackId="reports" fill={COLORS.warning} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
@@ -259,11 +231,11 @@ export default function PusatDashboard() {
         <h3 className="mb-4 text-lg font-semibold text-gray-900">Top 10 Masalah Utama (Per Kategori)</h3>
         <ResponsiveContainer width="100%" height={350}>
           <BarChart data={stats.topCategories} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis type="number" stroke="#6b7280" style={{ fontSize: "12px" }} />
-            <YAxis dataKey="kategori" type="category" width={150} stroke="#6b7280" style={{ fontSize: "12px" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis type="number" stroke="#94a3b8" style={{ fontSize: "12px" }} />
+            <YAxis dataKey="kategori" type="category" width={150} stroke="#94a3b8" style={{ fontSize: "12px" }} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px" }}
+              contentStyle={{ backgroundColor: "#0a142d", border: "1px solid #334155", borderRadius: "8px" }}
             />
             <Bar dataKey="count" fill={COLORS.primary} radius={[0, 8, 8, 0]} />
           </BarChart>
@@ -274,12 +246,12 @@ export default function PusatDashboard() {
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <h3 className="mb-4 text-lg font-semibold text-gray-900">Heat Map Provinsi (Top 15)</h3>
         <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={stats.provinsiHeatmap}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <BarChart data={provinceChartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis dataKey="provinsi" angle={-45} textAnchor="end" height={120} style={{ fontSize: "11px" }} />
-            <YAxis stroke="#6b7280" style={{ fontSize: "12px" }} />
+            <YAxis stroke="#94a3b8" style={{ fontSize: "12px" }} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px" }}
+              contentStyle={{ backgroundColor: "#0a142d", border: "1px solid #334155", borderRadius: "8px" }}
             />
             <Bar dataKey="count" fill={COLORS.danger} radius={[8, 8, 0, 0]}>
               {stats.provinsiHeatmap.map((entry, index) => (
@@ -289,7 +261,7 @@ export default function PusatDashboard() {
           </BarChart>
         </ResponsiveContainer>
         <p className="mt-4 text-xs text-gray-500">
-          🔴 Top 3 provinsi dengan laporan terbanyak ditandai dengan warna merah
+          ðŸ”´ Top 3 provinsi dengan laporan terbanyak ditandai dengan warna merah
         </p>
       </div>
     </div>

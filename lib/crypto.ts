@@ -8,7 +8,7 @@ const ALGORITHM = "aes-256-gcm";
  */
 function getKey(): Buffer {
   const hex = process.env.ENCRYPTION_KEY;
-  if (!hex || hex.length !== 64) {
+  if (!hex || !/^[a-f0-9]{64}$/i.test(hex)) {
     throw new Error("ENCRYPTION_KEY harus 64 karakter hex (32 byte) di .env.local");
   }
   return Buffer.from(hex, "hex");
@@ -19,7 +19,7 @@ function getKey(): Buffer {
  */
 function getHmacKey(): Buffer {
   const hex = process.env.HMAC_KEY;
-  if (!hex) throw new Error("HMAC_KEY belum diset di .env.local");
+  if (!hex || !/^[a-f0-9]{64}$/i.test(hex)) throw new Error("HMAC_KEY harus 64 karakter hex (32 byte) di .env.local");
   return Buffer.from(hex, "hex");
 }
 

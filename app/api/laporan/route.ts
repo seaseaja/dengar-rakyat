@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { validateSession } from "@/features/auth/session.service";
 import { createLaporan } from "@/features/laporan/laporan.service";
 import { findLaporanByUser, findAllLaporan } from "@/features/laporan/laporan.queries";
@@ -7,6 +7,9 @@ import { SESSION_COOKIE_NAME } from "@/lib/cookies";
 import { handleApiError, ApiError } from "@/lib/error-handler";
 import { checkRateLimit, RateLimits } from "@/lib/rate-limiter";
 import { logDataEvent } from "@/features/audit/audit.service";
+import { validateCsrfToken } from "@/lib/csrf";
+import { getWilayahTreeIds } from "@/features/wilayah/territory.queries";
+import { getClientIP } from "@/lib/request-context";
 
 export async function GET(req: Request) {
   try {
@@ -24,29 +27,38 @@ export async function GET(req: Request) {
     }
 
     const user = sessionResult.user;
+    const role = (user.role || "").toLowerCase();
     const { searchParams } = new URL(req.url);
     const mine = searchParams.get("mine");
+    const requestedLimit = Number(searchParams.get("limit"));
+    const limit = Number.isSafeInteger(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, 100)
+      : 100;
+    const requestedOffset = Number(searchParams.get("offset"));
+    const offset = Number.isSafeInteger(requestedOffset) && requestedOffset > 0 ? Math.min(requestedOffset, 1_000_000) : 0;
 
     // Get user's own reports
-    if (mine) {
-      const reports = await findLaporanByUser(user.id);
+    if (mine && role !== "warga") {
+      throw ApiError.forbidden("Daftar laporan pribadi hanya tersedia untuk akun warga");
+    }
+    if (role === "warga") {
+      const reports = await findLaporanByUser(user.id, undefined, limit, offset);
       return NextResponse.json(reports);
     }
 
     // RBAC: Filter by role and wilayah
-    let reports;
-    
-    if (user.role === "PUSAT") {
+    let reports: Awaited<ReturnType<typeof findAllLaporan>> = [];
+    if (role === "pusat") {
       // PUSAT can see ALL reports nationwide
-      reports = await findAllLaporan();
-    } else if (user.role === "PEMDA") {
-      // PEMDA can only see reports in their kota/kabupaten
-      // Get all kecamatan under this kota/kabupaten
-      // TODO: Query wilayah children, for now use single wilayah
-      reports = await findAllLaporan(user.wilayah_id ? [user.wilayah_id] : undefined);
+      reports = await findAllLaporan(undefined, limit, offset);
+    } else if (role === "admin_pemda" || role === "pemda") {
+      const scope = user.wilayah_id ? await getWilayahTreeIds(user.wilayah_id) : [];
+      reports = await findAllLaporan(scope, limit, offset);
+    } else if (role === "petugas_pos" || role === "pos") {
+      const scope = user.wilayah_id ? await getWilayahTreeIds(user.wilayah_id) : [];
+      reports = await findAllLaporan(scope, limit, offset);
     } else {
-      // POS can only see reports in their kecamatan
-      reports = await findAllLaporan(user.wilayah_id ? [user.wilayah_id] : undefined);
+      reports = [];
     }
 
     return NextResponse.json(reports);
@@ -57,9 +69,12 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const contentLength = Number(req.headers.get("content-length"));
+    if (Number.isFinite(contentLength) && contentLength > 12 * 1024 * 1024) {
+      throw ApiError.badRequest("Ukuran permintaan maksimal 12MB");
+    }
     // Validate session
     const cookieStore = await cookies();
-    const headersList = await headers();
     const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
     
     if (!sessionId) {
@@ -71,8 +86,17 @@ export async function POST(req: Request) {
       throw ApiError.unauthorized();
     }
 
+    const csrfResult = validateCsrfToken(req.headers.get("x-csrf-token") || "", sessionId);
+    if (!csrfResult.valid) throw ApiError.forbidden(`CSRF token invalid: ${csrfResult.reason}`);
+
     const user = sessionResult.user;
-    const ip = headersList.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+    if (user.role !== "warga") {
+      throw ApiError.forbidden("Hanya akun warga yang dapat membuat laporan");
+    }
+    if (!user.wilayah_id) {
+      throw ApiError.badRequest("Akun warga belum terhubung ke kecamatan. Lengkapi wilayah akun sebelum membuat laporan.");
+    }
+    const ip = getClientIP(req);
 
     // Rate limit: Max 10 reports per day per user (prevent spam)
     try {
@@ -102,6 +126,7 @@ export async function POST(req: Request) {
     const latitude = formData.get("latitude") as string | null;
     const longitude = formData.get("longitude") as string | null;
     const file = formData.get("foto") as File | null;
+    const isPublic = formData.get("is_public") === "true";
 
     const result = await createLaporan({
       userId: user.id,
@@ -112,6 +137,7 @@ export async function POST(req: Request) {
       latitude,
       longitude,
       file,
+      isPublic,
     });
 
     if (!result.ok) {
@@ -127,7 +153,7 @@ export async function POST(req: Request) {
       target_type: "laporan",
       target_id: String(result.id),
       ip_address: ip,
-      metadata: { judul, kategori, wilayah_id: user.wilayah_id },
+      metadata: { kategori, wilayah_id: user.wilayah_id },
     });
 
     return NextResponse.json(

@@ -9,6 +9,9 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: "Belum login" }, { status: 401 });
     }
+    if ((user.role || "").toLowerCase() !== "pusat") {
+      return NextResponse.json({ error: "Akses khusus Pemerintah Pusat" }, { status: 403 });
+    }
 
     return NextResponse.json(await listKotaKabWithAdmin());
   } catch (err) {

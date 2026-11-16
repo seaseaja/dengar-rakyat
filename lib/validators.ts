@@ -47,21 +47,6 @@ export function validateNik(nik: string): ValidationResult {
     return { valid: false, error: "NIK harus 16 digit angka" };
   }
 
-  // Basic validation: date part
-  const dd = Number.parseInt(nik.substring(6, 8), 10);
-  const mm = Number.parseInt(nik.substring(8, 10), 10);
-  
-  // DD can be 01-31 for male, 41-71 for female
-  const day = dd > 40 ? dd - 40 : dd;
-  
-  if (day < 1 || day > 31) {
-    return { valid: false, error: "Format NIK tidak valid (tanggal lahir)" };
-  }
-
-  if (mm < 1 || mm > 12) {
-    return { valid: false, error: "Format NIK tidak valid (bulan lahir)" };
-  }
-
   return { valid: true };
 }
 

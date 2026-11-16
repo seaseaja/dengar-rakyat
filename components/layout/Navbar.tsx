@@ -29,6 +29,12 @@ export default function Navbar({ user }: NavbarProps) {
   const isDashboardActive = pathname?.startsWith("/dashboard");
   const isLaporanActive = pathname?.startsWith("/laporan");
   const isProfileActive = pathname === "/profile";
+  const isFeedActive = pathname?.startsWith("/feed");
+  const normalizedRole = user.role.toLowerCase();
+  const dashboardHref = normalizedRole === "pusat" ? "/dashboard/pusat"
+    : normalizedRole === "admin_pemda" ? "/dashboard/pemda"
+    : normalizedRole === "petugas_pos" ? "/dashboard/pos"
+    : "/dashboard";
 
   return (
     <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
@@ -36,9 +42,9 @@ export default function Navbar({ user }: NavbarProps) {
         <div className="flex h-16 items-center justify-between">
           {/* Logo & Brand */}
           <div className="flex items-center space-x-8">
-            <Link href="/dashboard" className="flex items-center space-x-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 shadow-md">
-                <span className="text-xl font-bold text-white">DR</span>
+            <Link href={dashboardHref} className="flex items-center space-x-3">
+              <div className="brand-mark flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-700 to-blue-700 shadow-md">
+                <span className="text-lg font-bold tracking-tight text-white">DR</span>
               </div>
               <span className="text-xl font-bold text-gray-900">Dengar Rakyat</span>
             </Link>
@@ -47,15 +53,7 @@ export default function Navbar({ user }: NavbarProps) {
             <div className="hidden md:flex md:space-x-1">
               {/* Dashboard Link */}
               <Link
-                href={
-                  user.role === "pusat"
-                    ? "/dashboard/pusat"
-                    : user.role === "admin_pemda"
-                    ? "/dashboard/pemda"
-                    : user.role === "petugas_pos"
-                    ? "/dashboard/pos"
-                    : "/dashboard"
-                }
+                href={dashboardHref}
                 className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                   isDashboardActive
                     ? "bg-blue-50 text-blue-700"
@@ -64,9 +62,12 @@ export default function Navbar({ user }: NavbarProps) {
               >
                 Dashboard
               </Link>
+              {normalizedRole === "warga" && <Link href="/feed" className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${isFeedActive ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"}`}>
+                Ruang Warga
+              </Link>}
 
-              {/* Laporan Dropdown */}
-              <div className="relative">
+              {/* Personal reports are a citizen-only workflow. */}
+              {normalizedRole === "warga" && <div className="relative">
                 <button
                   onClick={() => setShowLaporanMenu(!showLaporanMenu)}
                   onBlur={() => setTimeout(() => setShowLaporanMenu(false), 200)}
@@ -88,7 +89,7 @@ export default function Navbar({ user }: NavbarProps) {
                 </button>
 
                 {showLaporanMenu && (
-                  <div className="absolute left-0 mt-2 w-56 rounded-lg border border-gray-200 bg-white shadow-lg">
+                  <div className="menu-surface absolute left-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white shadow-lg">
                     <div className="py-1">
                       <Link
                         href="/laporan/baru"
@@ -121,7 +122,7 @@ export default function Navbar({ user }: NavbarProps) {
                     </div>
                   </div>
                 )}
-              </div>
+              </div>}
             </div>
           </div>
 
@@ -154,12 +155,12 @@ export default function Navbar({ user }: NavbarProps) {
               </button>
 
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-64 rounded-lg border border-gray-200 bg-white shadow-lg">
+                <div className="menu-surface absolute right-0 mt-2 w-64 rounded-xl border border-gray-200 bg-white shadow-lg">
                   <div className="border-b border-gray-100 px-4 py-3">
                     <p className="text-sm font-medium text-gray-900">{user.nama}</p>
                     <p className="text-xs text-gray-500">{user.email}</p>
                     {user.wilayah_nama && (
-                      <p className="mt-1 text-xs text-gray-500">📍 {user.wilayah_nama}</p>
+                      <p className="mt-1 text-xs text-gray-500">ðŸ“ {user.wilayah_nama}</p>
                     )}
                   </div>
                   <div className="py-1">
@@ -177,26 +178,6 @@ export default function Navbar({ user }: NavbarProps) {
                       </svg>
                       <span>Profil Saya</span>
                     </Link>
-                    <Link
-                      href="/profile"
-                      className="flex items-center space-x-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700"
-                    >
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      <span>Pengaturan</span>
-                    </Link>
                   </div>
                   <div className="border-t border-gray-100 px-4 py-2">
                     <LogoutButton />
@@ -212,7 +193,7 @@ export default function Navbar({ user }: NavbarProps) {
       <div className="border-t border-gray-200 md:hidden">
         <div className="flex justify-around py-2">
           <Link
-            href="/dashboard"
+            href={dashboardHref}
             className={`flex flex-col items-center space-y-1 px-3 py-2 ${
               isDashboardActive ? "text-blue-600" : "text-gray-600"
             }`}
@@ -227,7 +208,7 @@ export default function Navbar({ user }: NavbarProps) {
             </svg>
             <span className="text-xs">Dashboard</span>
           </Link>
-          <Link
+          {normalizedRole === "warga" && <Link
             href="/laporan"
             className={`flex flex-col items-center space-y-1 px-3 py-2 ${
               isLaporanActive ? "text-blue-600" : "text-gray-600"
@@ -242,7 +223,10 @@ export default function Navbar({ user }: NavbarProps) {
               />
             </svg>
             <span className="text-xs">Laporan</span>
-          </Link>
+          </Link>}
+          {normalizedRole === "warga" && <Link href="/feed" className={`flex flex-col items-center space-y-1 px-3 py-2 ${isFeedActive ? "text-blue-600" : "text-gray-600"}`}>
+            <span className="text-xl" aria-hidden="true">◎</span><span className="text-xs">Ruang Warga</span>
+          </Link>}
           <Link
             href="/profile"
             className={`flex flex-col items-center space-y-1 px-3 py-2 ${

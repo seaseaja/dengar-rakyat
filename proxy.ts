@@ -1,5 +1,5 @@
 /**
- * Next.js Middleware - Iterasi 2 H3 + H5 Complete
+ * Next.js Proxy - request guardrails; endpoint handlers still own auth/RBAC.
  * - Session validation (basic check, full validation in API routes)
  * - Protected routes with allowlist
  * - CSRF token presence check
@@ -11,9 +11,6 @@
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-
-// Force Node.js runtime (crypto & db requires Node APIs)
-export const runtime = 'nodejs';
 
 // Public routes (no auth required)
 const PUBLIC_ROUTES = [
@@ -58,7 +55,7 @@ function checkSubrequestBypass(request: NextRequest): boolean {
   return false;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 

@@ -1,16 +1,17 @@
-export type Role = "warga" | "petugas_pos" | "admin_pemda" | "pusat";
+export type Role = "warga" | "petugas_pos" | "admin_pemda" | "pusat" | "PUSAT" | "PEMDA" | "POS";
 
 export interface User {
   id: number;
-  nik: string;
+  nik?: string | null;
   nama: string;
   email: string;
-  alamat: string;
+  alamat?: string | null;
   wilayah_id: number | null;
   wilayah_nama?: string | null;
-  password: string;
+  password?: string;
   role: Role;
-  created_at: Date;
+  created_at?: Date | string | null;
+  updated_at?: Date | string | null;
 }
 
 export interface RegisterInput {
@@ -24,5 +25,5 @@ export interface RegisterInput {
 }
 
 export type ServiceResult<T = object> =
-  | ({ ok: true } & T)
-  | { ok: false; status: number; error: string };
+  | ({ ok: true; message?: string } & T)
+  | { ok: false; status: number; error: string; message?: string };

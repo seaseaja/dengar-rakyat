@@ -4,14 +4,14 @@
  * WITH transaction and row-level locking (race condition prevention)
  */
 
-import crypto from "crypto";
-import { query } from "@/lib/db";
+import { pool } from "@/lib/db";
 import {
   insertAuditLog,
   queryAuditLogs,
   verifyHashChain,
 } from "./audit.queries";
 import type { AuditLogEntry, AuditQuery, AuditLogRecord } from "./audit.types";
+import { generateAuditHash } from "./audit-hash";
 
 /**
  * Log audit event (main function)
@@ -21,74 +21,42 @@ import type { AuditLogEntry, AuditQuery, AuditLogRecord } from "./audit.types";
  * @returns Log ID
  */
 export async function logAudit(entry: AuditLogEntry): Promise<number> {
+  const connection = await pool.getConnection();
+  let lockHeld = false;
   try {
-    // START TRANSACTION with row-level lock
-    // This prevents race condition when 2 logs are inserted simultaneously
-    await query("START TRANSACTION");
+    const [lockRows] = await connection.query("SELECT GET_LOCK(?, 5) AS acquired", ["dengar-rakyat-audit-chain"]);
+    const lockResult = lockRows as Array<{ acquired: number | null }>;
+    if (lockResult[0]?.acquired !== 1) throw new Error("Could not acquire audit-chain lock");
+    lockHeld = true;
+    await connection.beginTransaction();
 
-    try {
-      // Get last log for hash chain WITH LOCK (SELECT ... FOR UPDATE)
-      // This locks the row until transaction commits
-      const lastLogResult = await query(
-        `SELECT * FROM audit_logs ORDER BY id DESC LIMIT 1 FOR UPDATE`
-      );
-      
-      const lastLog = lastLogResult.rows[0] as AuditLogRecord | undefined;
+    const [lastRows] = await connection.query("SELECT current_hash FROM audit_logs ORDER BY id DESC LIMIT 1 FOR UPDATE");
+    const lastLog = (lastRows as Array<{ current_hash: string | null }>)[0];
+    const previousHash = lastLog?.current_hash ?? null;
+    const currentHash = generateAuditHash(entry, previousHash);
+    const logId = await insertAuditLog(
+      { ...entry, previous_hash: previousHash, current_hash: currentHash },
+      async (sql, params) => {
+        const [result] = await connection.execute(sql, params as (string | number | Buffer | Date | null)[]);
+        return result as { insertId?: number };
+      }
+    );
 
-      // Generate hash for this entry
-      const previousHash = lastLog?.current_hash || null;
-      const currentHash = generateHash(entry, previousHash);
-
-      // Insert to database
-      const logId = await insertAuditLog({
-        ...entry,
-        previous_hash: previousHash,
-        current_hash: currentHash,
-      });
-
-      // COMMIT TRANSACTION
-      await query("COMMIT");
-
-      return logId;
-    } catch (error) {
-      // ROLLBACK on error
-      await query("ROLLBACK");
-      throw error;
-    }
+    await connection.commit();
+    return logId;
   } catch (error) {
+    await connection.rollback().catch(() => undefined);
     // CRITICAL: Audit logging failure
     console.error("[AUDIT] Failed to log event:", error);
-    console.error("[AUDIT] Event:", entry);
-    
     // Don't throw - we don't want audit failure to break app
     // But log to stderr for monitoring
     return -1;
+  } finally {
+    if (lockHeld) {
+      await connection.query("SELECT RELEASE_LOCK(?)", ["dengar-rakyat-audit-chain"]).catch(() => undefined);
+    }
+    connection.release();
   }
-}
-
-/**
- * Generate hash for audit log entry
- * Hash = SHA256(entry + previousHash)
- */
-function generateHash(
-  entry: AuditLogEntry,
-  previousHash: string | null
-): string {
-  const data = JSON.stringify({
-    event_type: entry.event_type,
-    event_category: entry.event_category,
-    action: entry.action,
-    user_id: entry.user_id,
-    user_email: entry.user_email,
-    target_type: entry.target_type,
-    target_id: entry.target_id,
-    status: entry.status,
-    metadata: entry.metadata,
-    previous_hash: previousHash,
-    timestamp: Date.now(), // Include current time
-  });
-
-  return crypto.createHash("sha256").update(data).digest("hex");
 }
 
 /**
@@ -107,11 +75,13 @@ export async function getAuditLogs(
 export async function verifyAuditIntegrity(): Promise<{
   valid: boolean;
   brokenLinks: Array<{ id: number; expected: string; actual: string }>;
+  legacyCount: number;
 }> {
-  const broken = await verifyHashChain();
+  const result = await verifyHashChain();
   return {
-    valid: broken.length === 0,
-    brokenLinks: broken,
+    valid: result.brokenLinks.length === 0 && result.legacyCount === 0,
+    brokenLinks: result.brokenLinks,
+    legacyCount: result.legacyCount,
   };
 }
 
@@ -233,7 +203,7 @@ export async function logSystemEvent(params: {
     user_email: params.user_email,
     ip_address: params.ip_address,
     user_agent: params.user_agent,
-    status: "warning",
+    status: "failure",
     metadata: params.metadata,
   });
 }

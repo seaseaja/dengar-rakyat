@@ -7,6 +7,8 @@
  */
 
 import crypto from "crypto";
+import { cookies } from "next/headers";
+import { SESSION_COOKIE_NAME } from "@/lib/cookies";
 import {
   insertSession,
   findSessionById,
@@ -14,7 +16,7 @@ import {
   deleteSession,
   deleteAllUserSessions,
 } from "./auth.queries";
-import type { User } from "./auth.types";
+import type { Role, User } from "./auth.types";
 
 const ABSOLUTE_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -92,7 +94,7 @@ export async function validateSession(sessionId: string): Promise<{
       id: session.user_id,
       email: session.email,
       nama: session.nama,
-      role: session.role,
+      role: session.role as Role,
       wilayah_id: session.wilayah_id,
       nik: null, // Never expose NIK in session
       alamat: null,
@@ -138,8 +140,20 @@ export async function getSessionWithUser(sessionId: string): Promise<{
  * Get current user from session (convenience wrapper)
  */
 export async function getCurrentUser(sessionId?: string): Promise<User | null> {
-  if (!sessionId) return null;
+  let targetSessionId = sessionId;
+  if (!targetSessionId) {
+    try {
+      const cookieStore = await cookies();
+      targetSessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    } catch {
+      // Outside request context
+    }
+  }
+
+  if (!targetSessionId) return null;
   
-  const result = await validateSession(sessionId);
+  const result = await validateSession(targetSessionId);
   return result.user;
 }
+
+export const getUserFromSession = getCurrentUser;

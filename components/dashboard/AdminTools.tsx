@@ -18,37 +18,39 @@ interface Kecamatan {
 }
 
 interface AdminToolsProps {
-  role: "PUSAT" | "PEMDA";
+  role?: string;
   kotaKabId?: number | null;
 }
 
-export default function AdminTools({ role, kotaKabId }: AdminToolsProps) {
+export default function AdminTools({ role = "PUSAT", kotaKabId }: AdminToolsProps) {
   const [kotaKabData, setKotaKabData] = useState<KotaKab[]>([]);
   const [kecamatanData, setKecamatanData] = useState<Kecamatan[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const isPusat = role.toUpperCase() === "PUSAT";
+
   useEffect(() => {
-    if (role === "PUSAT") {
+    if (isPusat) {
       // Load all kota/kab
       void fetch("/api/admin/kota-kab")
         .then((r) => r.json())
         .then((d) => Array.isArray(d) && setKotaKabData(d))
         .finally(() => setLoading(false));
-    } else if (role === "PEMDA" && kotaKabId) {
+    } else if (kotaKabId) {
       // Load kecamatan in this kota/kab
       void fetch(`/api/admin/kecamatan?kotaKabId=${kotaKabId}`)
         .then((r) => r.json())
         .then((d) => Array.isArray(d) && setKecamatanData(d))
         .finally(() => setLoading(false));
     }
-  }, [role, kotaKabId]);
+  }, [isPusat, kotaKabId]);
 
   if (loading) {
     return <p className="text-sm text-gray-500">Memuat data admin...</p>;
   }
 
-  if (role === "PUSAT") {
+  if (isPusat) {
     const grouped = kotaKabData.reduce<Record<string, KotaKab[]>>((acc, row) => {
       (acc[row.provinsi_nama] ??= []).push(row);
       return acc;

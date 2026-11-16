@@ -1,6 +1,5 @@
 /**
- * Privacy Policy Page - Iterasi 3 P6
- * GDPR Compliance
+ * Informasi privasi berdasarkan fitur yang saat ini tersedia.
  */
 
 export default function PrivacyPage() {
@@ -35,11 +34,11 @@ export default function PrivacyPage() {
           <li>HTTPS untuk transmisi data</li>
         </ul>
 
-        <h2 className="text-2xl font-semibold mt-6">4. Hak Anda (GDPR)</h2>
+        <h2 className="text-2xl font-semibold mt-6">4. Akses dan pengelolaan data</h2>
         <ul className="list-disc ml-6">
-          <li><strong>Hak Akses:</strong> Unduh data Anda di /api/user/export</li>
-          <li><strong>Hak Hapus:</strong> Request penghapusan data</li>
-          <li><strong>Hak Perbaikan:</strong> Update data di profil</li>
+          <li>Anda dapat meminta salinan data akun melalui endpoint ekspor; ekspor saat ini belum mencakup seluruh laporan dan komentar.</li>
+          <li>Anda dapat memperbarui nama dan alamat melalui halaman profil.</li>
+          <li>Permintaan penghapusan akun/data belum tersedia otomatis; hubungi pengelola untuk proses manual.</li>
         </ul>
 
         <h2 className="text-2xl font-semibold mt-6">5. Kontak</h2>

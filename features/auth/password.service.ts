@@ -9,15 +9,15 @@
 
 import crypto from "crypto";
 import argon2 from "argon2";
+import { query } from "@/lib/db";
 import { validatePassword } from "@/lib/password-policy";
 import { checkRateLimit, RateLimits } from "@/lib/rate-limiter";
 import {
   findUserByEmail,
   insertResetToken,
   findResetToken,
-  markTokenUsed,
-  updatePassword,
-  deleteAllUserSessions,
+  consumePasswordReset,
+  updatePasswordAndRotateSessions,
 } from "./auth.queries";
 import type { ServiceResult } from "./auth.types";
 
@@ -30,7 +30,7 @@ const TOKEN_EXPIRY_MINUTES = 15;
  */
 export async function requestPasswordReset(
   email: string
-): Promise<ServiceResult<{ token?: string }>> {
+): Promise<ServiceResult<{ message: string }>> {
   // Rate limit check
   const rateLimit = checkRateLimit(
     `password-reset:${email}`,
@@ -48,9 +48,9 @@ export async function requestPasswordReset(
   }
 
   // Always return generic response (timing-safe)
-  const genericResponse = {
+  const genericResponse: ServiceResult<{ message: string }> = {
     ok: true,
-    message: "Jika email terdaftar, link reset password telah dikirim",
+    message: "Jika email terdaftar, instruksi reset akan dikirim setelah layanan email tersedia",
   };
 
   try {
@@ -79,12 +79,8 @@ export async function requestPasswordReset(
     // Store hashed token
     await insertResetToken(user.id, tokenHash, expiresAt);
 
-    // In real app: send email with plainToken
-    // For now, return token (for testing)
-    return {
-      ...genericResponse,
-      token: plainToken, // Only for testing, remove in production
-    };
+    // No email transport is configured yet; never return the raw reset token.
+    return genericResponse;
   } catch (error) {
     console.error("Password reset request error:", error);
     // Still return generic response (don't leak error)
@@ -100,8 +96,8 @@ export async function requestPasswordReset(
 export async function resetPassword(
   token: string,
   newPassword: string
-): Promise<ServiceResult<{}>> {
-  if (!token || !newPassword) {
+): Promise<ServiceResult<{ message: string }>> {
+  if (!token || !newPassword || token.length !== 64 || !/^[a-f0-9]{64}$/i.test(token) || newPassword.length > 128) {
     return { ok: false, status: 400, error: "Token dan password wajib diisi" };
   }
 
@@ -130,8 +126,6 @@ export async function resetPassword(
       };
     }
 
-    const resetEntry = tokens[0];
-
     // Hash new password
     const passwordHash = await argon2.hash(newPassword, {
       type: argon2.argon2id,
@@ -140,14 +134,9 @@ export async function resetPassword(
       parallelism: 1,
     });
 
-    // Update password
-    await updatePassword(resetEntry.user_id, passwordHash);
-
-    // Mark token as used (prevent reuse)
-    await markTokenUsed(tokenHash);
-
-    // Invalidate all user sessions (force re-login)
-    await deleteAllUserSessions(resetEntry.user_id);
+    // Token consumption, password update, and session invalidation are atomic.
+    const consumedUserId = await consumePasswordReset(tokenHash, passwordHash);
+    if (!consumedUserId) return { ok: false, status: 400, error: "Token tidak valid atau sudah expired" };
 
     return {
       ok: true,
@@ -166,16 +155,22 @@ export async function resetPassword(
 /**
  * Change password (authenticated user)
  * @param userId User ID
- * @param currentPassword Current password
- * @param newPassword New password
+ * @param currentOrNewPassword Current password or new password
+ * @param maybeNewPassword Optional new password if first argument is current
  */
 export async function changePassword(
   userId: number,
   currentPassword: string,
-  newPassword: string
-): Promise<ServiceResult<{}>> {
+  newPassword: string,
+  username?: string
+): Promise<ServiceResult<{ message: string; sessionId?: string }>> {
+  if (!newPassword) {
+    return { ok: false, status: 400, error: "Password baru wajib diisi" };
+  }
+
   // Password policy validation
-  const passwordValidation = validatePassword(newPassword);
+  if (newPassword.length > 128) return { ok: false, status: 400, error: "Password maksimal 128 karakter" };
+  const passwordValidation = validatePassword(newPassword, {}, username);
   if (!passwordValidation.valid) {
     return {
       ok: false,
@@ -184,11 +179,34 @@ export async function changePassword(
     };
   }
 
-  // TODO: Implement (verify current password, update)
-  // Placeholder for H5/H6
-  return {
-    ok: false,
-    status: 501,
-    error: "Not implemented yet",
-  };
+  try {
+    const userRes = await query("SELECT password FROM users WHERE id = ?", [userId]);
+    if (userRes.rows.length === 0) {
+      return { ok: false, status: 404, error: "User tidak ditemukan" };
+    }
+    const valid = await argon2.verify(userRes.rows[0].password, currentPassword);
+    if (!valid) {
+      return { ok: false, status: 401, error: "Password lama salah" };
+    }
+
+    const passwordHash = await argon2.hash(newPassword, {
+      type: argon2.argon2id,
+      memoryCost: 19456,
+      timeCost: 2,
+      parallelism: 1,
+    });
+
+    const sessionId = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const updated = await updatePasswordAndRotateSessions(userId, userRes.rows[0].password, passwordHash, sessionId, expiresAt);
+    if (!updated) return { ok: false, status: 409, error: "Password berubah bersamaan. Muat ulang lalu coba lagi." };
+    return {
+      ok: true,
+      message: "Password berhasil diubah",
+      sessionId,
+    };
+  } catch (error) {
+    console.error("Change password error:", error);
+    return { ok: false, status: 500, error: "Gagal mengubah password" };
+  }
 }

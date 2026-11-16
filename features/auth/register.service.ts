@@ -10,6 +10,7 @@ import { encrypt, hmacHash } from "@/lib/crypto";
 import { validatePassword } from "@/lib/password-policy";
 import { findUserByEmail, findUserByNik, insertUser } from "./auth.queries";
 import type { RegisterInput, ServiceResult } from "./auth.types";
+import { query } from "@/lib/db";
 
 export async function registerUser(
   input: RegisterInput
@@ -19,6 +20,14 @@ export async function registerUser(
   // Validation: required fields
   if (!nik || !nama || !email || !alamat || !wilayah_id || !password) {
     return { ok: false, status: 400, error: "Semua field wajib diisi" };
+  }
+  const wilayahId = Number(wilayah_id);
+  if (!Number.isSafeInteger(wilayahId) || wilayahId <= 0) {
+    return { ok: false, status: 400, error: "Wilayah tidak valid" };
+  }
+  const wilayah = await query("SELECT id FROM wilayah WHERE id = ? AND tipe = 'kecamatan'", [wilayahId]);
+  if (!wilayah.rows.length) {
+    return { ok: false, status: 400, error: "Pilih kecamatan yang tersedia" };
   }
 
   // Validation: NIK format (16 digits)
@@ -32,8 +41,9 @@ export async function registerUser(
     return { ok: false, status: 400, error: "Format email tidak valid" };
   }
 
-  // Validation: password policy
-  const passwordValidation = validatePassword(password);
+  // Validation: password policy (enforces symbols & no username)
+  const usernameGuess = email.split("@")[0] || nama;
+  const passwordValidation = validatePassword(password, { requireSpecial: true }, usernameGuess);
   if (!passwordValidation.valid) {
     return {
       ok: false,
@@ -70,7 +80,7 @@ export async function registerUser(
 
     // Insert user
     const user = await insertUser(
-      { ...input, role: input.role ?? "warga" },
+      { ...input, wilayah_id: wilayahId, role: "warga" },
       passwordHash,
       nikEnc,
       nikHash,

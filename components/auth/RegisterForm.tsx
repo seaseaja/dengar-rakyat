@@ -7,7 +7,7 @@ import AuthCard from "@/components/ui/AuthCard";
 import FormField from "@/components/ui/FormField";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
-import { PasswordStrengthMeter } from "@/components/ui/PasswordStrengthMeter";
+import { PasswordPolicyPopup } from "@/components/ui/PasswordPolicyPopup";
 import { postJson } from "@/lib/api-client";
 
 interface WilayahOption {
@@ -46,7 +46,9 @@ export default function RegisterForm() {
   const [kecamatanId, setKecamatanId] = useState("");
 
   const [error, setError] = useState("");
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
   // Provinsi: di-fetch SEKALI saat halaman dibuka
   useEffect(() => {
@@ -84,6 +86,7 @@ export default function RegisterForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+    setErrorDetails([]);
     setLoading(true);
     const { ok, data } = await postJson("/api/auth/register", {
       ...form,
@@ -92,6 +95,9 @@ export default function RegisterForm() {
     setLoading(false);
     if (!ok) {
       setError(data.error ?? "Terjadi kesalahan");
+      if (Array.isArray(data.details)) {
+        setErrorDetails(data.details.filter((detail: unknown): detail is string => typeof detail === "string"));
+      }
       return;
     }
     router.push("/login?registered=1");
@@ -100,11 +106,20 @@ export default function RegisterForm() {
   return (
     <AuthCard title="Daftar Akun" subtitle="Dengar Rakyat! — Lapor, dilacak, ditindaklanjuti">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <Alert type="error">{error}</Alert>}
+        {error && (
+          <Alert type="error">
+            <p>{error}</p>
+            {errorDetails.length > 0 && (
+              <ul className="mt-2 list-inside list-disc space-y-1">
+                {errorDetails.map((detail) => <li key={detail}>{detail}</li>)}
+              </ul>
+            )}
+          </Alert>
+        )}
 
-        <FormField id="nik" name="nik" label="NIK" maxLength={16} value={form.nik} onChange={handleChange} />
-        <FormField id="nama" name="nama" label="Nama Lengkap" value={form.nama} onChange={handleChange} />
-        <FormField id="email" name="email" label="Email" type="text" value={form.email} onChange={handleChange} />
+        <FormField id="nik" name="nik" label="NIK" inputMode="numeric" pattern="[0-9]{16}" title="NIK harus 16 digit angka" maxLength={16} required value={form.nik} onChange={handleChange} />
+        <FormField id="nama" name="nama" label="Nama Lengkap" minLength={2} maxLength={100} required value={form.nama} onChange={handleChange} />
+        <FormField id="email" name="email" label="Email" type="email" maxLength={100} required value={form.email} onChange={handleChange} />
 
         <div className="space-y-1">
           <label htmlFor="alamat" className="block text-sm font-medium text-gray-700">
@@ -114,6 +129,9 @@ export default function RegisterForm() {
             id="alamat"
             name="alamat"
             rows={2}
+            minLength={5}
+            maxLength={255}
+            required
             value={form.alamat}
             onChange={handleChange}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
@@ -124,7 +142,7 @@ export default function RegisterForm() {
           <label htmlFor="provinsi" className="block text-sm font-medium text-gray-700">
             Provinsi
           </label>
-          <select id="provinsi" value={provinsiId} onChange={handleProvinsiChange} className={SELECT_CLASS}>
+          <select id="provinsi" value={provinsiId} onChange={handleProvinsiChange} required className={SELECT_CLASS}>
             <option value="">-- Pilih provinsi --</option>
             {provinsi.map((p) => (
               <option key={p.id} value={p.id}>
@@ -143,6 +161,7 @@ export default function RegisterForm() {
             value={kotaKabId}
             onChange={handleKotaKabChange}
             disabled={!provinsiId}
+            required
             className={SELECT_CLASS}
           >
             <option value="">-- Pilih kota/kabupaten --</option>
@@ -163,6 +182,7 @@ export default function RegisterForm() {
             value={kecamatanId}
             onChange={(e) => setKecamatanId(e.target.value)}
             disabled={!kotaKabId}
+            required
             className={SELECT_CLASS}
           >
             <option value="">-- Pilih kecamatan --</option>
@@ -174,10 +194,27 @@ export default function RegisterForm() {
           </select>
         </div>
 
-        <FormField id="password" name="password" label="Password" type="password" value={form.password} onChange={handleChange} />
-        
-        {/* Password Strength Meter - H6 */}
-        <PasswordStrengthMeter password={form.password} />
+        <div className="relative">
+          <FormField
+            id="password"
+            name="password"
+            label="Password"
+            type="password"
+            required
+            value={form.password}
+            onChange={handleChange}
+            onFocus={() => setPasswordFocused(true)}
+            onBlur={() => setPasswordFocused(false)}
+            placeholder="Minimal 8 karakter, kombinasi huruf, angka, simbol"
+          />
+
+          {/* Real-time Pop-up Checklist */}
+          <PasswordPolicyPopup
+            password={form.password}
+            username={form.nama || form.email.split("@")[0]}
+            visible={passwordFocused || form.password.length > 0}
+          />
+        </div>
 
         <Button type="submit" disabled={loading}>
           {loading ? "Memproses..." : "Daftar"}

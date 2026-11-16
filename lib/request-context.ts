@@ -5,6 +5,7 @@
  */
 
 import type { NextRequest } from "next/server";
+import { isIP } from "node:net";
 
 /**
  * Trusted proxies (load balancers, reverse proxies)
@@ -39,37 +40,21 @@ export function getClientIP(
   request: Request | NextRequest,
   directIP?: string
 ): string | undefined {
-  // If we have direct IP and it's NOT from trusted proxy, use it
-  // (User can't spoof direct socket IP)
-  if (directIP && !isTrustedProxy(directIP)) {
-    return directIP;
+  if (directIP) {
+    if (!isIP(directIP)) return "unknown";
+    if (!isTrustedProxy(directIP)) return directIP;
+  } else if (process.env.TRUST_PROXY_HEADERS !== "true") {
+    // Request headers are client controlled unless the ingress proxy is
+    // configured to overwrite them. Never trust CF/X-Forwarded-For implicitly.
+    return "unknown";
   }
 
-  // Only trust X-Forwarded-For if request came from trusted proxy
-  if (directIP && isTrustedProxy(directIP)) {
-    // Try X-Forwarded-For first (proxy/load balancer)
-    const xForwardedFor = request.headers.get("x-forwarded-for");
-    if (xForwardedFor) {
-      // X-Forwarded-For format: "client, proxy1, proxy2"
-      // Take leftmost IP (original client)
-      return xForwardedFor.split(",")[0].trim();
-    }
-
-    // Try X-Real-IP (some proxies use this)
-    const xRealIP = request.headers.get("x-real-ip");
-    if (xRealIP) {
-      return xRealIP;
-    }
-  }
-
-  // Try CF-Connecting-IP (Cloudflare - always trusted if present)
-  const cfConnectingIP = request.headers.get("cf-connecting-ip");
-  if (cfConnectingIP) {
-    return cfConnectingIP;
-  }
-
-  // Fallback: use direct IP or unknown
-  return directIP || "unknown";
+  // Only use forwarding headers when deployment explicitly guarantees that
+  // the reverse proxy strips incoming values and writes its own.
+  const candidate = request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-real-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim();
+  return candidate && isIP(candidate) ? candidate : directIP || "unknown";
 }
 
 /**

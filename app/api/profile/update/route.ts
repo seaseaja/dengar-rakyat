@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/features/auth/session.service";
 import { SESSION_COOKIE_NAME } from "@/lib/cookies";
 import { query } from "@/lib/db";
 import { encrypt } from "@/lib/crypto";
+import { validateCsrfToken } from "@/lib/csrf";
 
 export async function PUT(req: Request) {
   try {
@@ -20,10 +21,15 @@ export async function PUT(req: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!sessionId || !validateCsrfToken(req.headers.get("x-csrf-token") || "", sessionId).valid) {
+      return NextResponse.json({ error: "CSRF token tidak valid" }, { status: 403 });
+    }
 
-    const { nama, alamat } = await req.json();
+    const body = await req.json();
+    const nama = body?.nama;
+    const alamat = body?.alamat;
 
-    if (!nama || nama.trim().length < 3) {
+    if (typeof nama !== "string" || nama.trim().length < 3 || nama.trim().length > 120 || (alamat != null && (typeof alamat !== "string" || alamat.length > 1000))) {
       return NextResponse.json(
         { error: "Nama harus minimal 3 karakter" },
         { status: 400 }
@@ -31,12 +37,12 @@ export async function PUT(req: Request) {
     }
 
     // Encrypt alamat if provided
-    const alamatEnc = alamat ? encrypt(alamat) : null;
+    const alamatEnc = typeof alamat === "string" && alamat.trim() ? encrypt(alamat.trim()) : null;
 
     // Update user
     await query(
       `UPDATE users 
-       SET nama = ?, alamat_enc = ?
+       SET nama = ?, alamat_enc = COALESCE(?, alamat_enc)
        WHERE id = ?`,
       [nama.trim(), alamatEnc, user.id]
     );

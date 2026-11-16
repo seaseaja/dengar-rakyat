@@ -7,9 +7,13 @@ export default function LogoutButton() {
 
   async function handleLogout() {
     try {
+      const csrfResponse = await fetch("/api/auth/csrf", { credentials: "include" });
+      if (!csrfResponse.ok) return;
+      const { token } = await csrfResponse.json();
       const res = await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
+        headers: { "X-CSRF-Token": token },
       });
 
       if (res.ok) {

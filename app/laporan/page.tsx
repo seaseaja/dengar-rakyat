@@ -12,16 +12,23 @@ export default async function LaporanPage() {
   
   const user = await getCurrentUser(sessionId);
   if (!user) redirect("/login");
+  if (user.role !== "warga") {
+    if (user.role === "pusat") redirect("/dashboard/pusat");
+    if (user.role === "admin_pemda") redirect("/dashboard/pemda");
+    if (user.role === "petugas_pos") redirect("/dashboard/pos");
+    redirect("/dashboard");
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="dashboard-theme min-h-screen">
       <Navbar user={user} />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Page Header */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Laporan Saya</h1>
+            <p className="eyebrow mb-2">Arsip pengaduan</p>
+            <h1 className="page-title text-3xl font-bold text-gray-900 sm:text-4xl">Laporan Saya</h1>
             <p className="mt-1 text-sm text-gray-600">
               Kelola dan pantau status laporan yang telah Anda buat
             </p>
@@ -37,7 +44,7 @@ export default async function LaporanPage() {
           </Link>
         </div>
 
-        <LaporanList />
+        <LaporanList mode="mine" />
       </main>
     </div>
   );

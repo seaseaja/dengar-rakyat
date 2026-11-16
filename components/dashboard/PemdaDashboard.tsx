@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -17,14 +16,17 @@ import {
 } from "recharts";
 import { format, parseISO } from "date-fns";
 import InsightsSummary from "./InsightsSummary";
+import { useDashboardStats } from "./useDashboardStats";
+import Link from "next/link";
+import StatusBadge from "@/components/ui/StatusBadge";
 
 const COLORS = {
-  primary: "#3b82f6",
+  primary: "#38bdf8",
   success: "#10b981",
   warning: "#f59e0b",
   danger: "#ef4444",
   purple: "#8b5cf6",
-  indigo: "#6366f1",
+  indigo: "#a78bfa",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -39,6 +41,15 @@ interface StatsData {
   statusDistribution: Array<{ status: string; count: number }>;
   weeklyTrend: Array<{ date: string; count: number }>;
   topCategories: Array<{ kategori: string; count: number }>;
+  recentReports: Array<{
+    id: number;
+    judul: string;
+    kategori: string;
+    status: string;
+    created_at: string;
+    pelapor_nama: string;
+    wilayah_nama: string | null;
+  }>;
   totalStats: { total_laporan: number; selesai: number; pending: number };
 }
 
@@ -49,36 +60,7 @@ export default function PemdaDashboard({
   kotaKabId: number | null;
   kotaKabNama?: string | null;
 }) {
-  const [stats, setStats] = useState<StatsData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!kotaKabId) {
-      setLoading(false);
-      return;
-    }
-
-    async function loadStats() {
-      try {
-        const res = await fetch("/api/dashboard/pemda-stats", {
-          credentials: "include",
-        });
-        
-        if (!res.ok) {
-          throw new Error(`Failed to load stats: ${res.status}`);
-        }
-        
-        const data = await res.json();
-        setStats(data);
-      } catch (e) {
-        console.error("Error loading pemda stats:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    void loadStats();
-  }, [kotaKabId]);
+  const { data: stats, loading, error } = useDashboardStats<StatsData>("/api/dashboard/pemda-stats", Boolean(kotaKabId));
 
   if (!kotaKabId) {
     return <p className="text-sm text-gray-500">Akun ini belum terhubung ke kota/kabupaten.</p>;
@@ -96,7 +78,7 @@ export default function PemdaDashboard({
   }
 
   if (!stats) {
-    return <p className="text-sm text-red-500">Gagal memuat data statistik</p>;
+    return <p className="text-sm text-red-300">{error || "Gagal memuat data statistik"}</p>;
   }
 
   const { totalStats } = stats;
@@ -146,11 +128,11 @@ export default function PemdaDashboard({
         <h3 className="mb-4 text-lg font-semibold text-gray-900">Tren Mingguan (7 Hari Terakhir)</h3>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={formattedWeeklyTrend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="dateLabel" stroke="#6b7280" style={{ fontSize: "12px" }} />
-            <YAxis stroke="#6b7280" style={{ fontSize: "12px" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis dataKey="dateLabel" stroke="#94a3b8" style={{ fontSize: "12px" }} />
+            <YAxis stroke="#94a3b8" style={{ fontSize: "12px" }} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px" }}
+              contentStyle={{ backgroundColor: "#0a142d", border: "1px solid #334155", borderRadius: "8px" }}
             />
             <Line type="monotone" dataKey="count" stroke={COLORS.primary} strokeWidth={2} dot={{ r: 4 }} />
           </LineChart>
@@ -169,7 +151,7 @@ export default function PemdaDashboard({
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ status, percent }) => `${status} (${(percent * 100).toFixed(0)}%)`}
+                label={(props: any) => `${props.status || props.name || ""} (${((props.percent || 0) * 100).toFixed(0)}%)`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="count"
@@ -188,11 +170,11 @@ export default function PemdaDashboard({
           <h3 className="mb-4 text-lg font-semibold text-gray-900">Top 5 Kategori Masalah</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={stats.topCategories}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis dataKey="kategori" angle={-15} textAnchor="end" height={80} style={{ fontSize: "10px" }} />
-              <YAxis stroke="#6b7280" style={{ fontSize: "12px" }} />
+              <YAxis stroke="#94a3b8" style={{ fontSize: "12px" }} />
               <Tooltip
-                contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px" }}
+                contentStyle={{ backgroundColor: "#0a142d", border: "1px solid #334155", borderRadius: "8px" }}
               />
               <Bar dataKey="count" fill={COLORS.indigo} radius={[8, 8, 0, 0]} />
             </BarChart>
@@ -207,11 +189,11 @@ export default function PemdaDashboard({
         </h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={top5Kecamatan} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis type="number" stroke="#6b7280" style={{ fontSize: "12px" }} />
-            <YAxis dataKey="kecamatan" type="category" width={150} stroke="#6b7280" style={{ fontSize: "12px" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis type="number" stroke="#94a3b8" style={{ fontSize: "12px" }} />
+            <YAxis dataKey="kecamatan" type="category" width={150} stroke="#94a3b8" style={{ fontSize: "12px" }} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px" }}
+              contentStyle={{ backgroundColor: "#0a142d", border: "1px solid #334155", borderRadius: "8px" }}
             />
             <Bar dataKey="count" fill={COLORS.success} radius={[0, 8, 8, 0]} />
           </BarChart>
@@ -234,6 +216,34 @@ export default function PemdaDashboard({
                 <tr key={k.kecamatan} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-gray-900">{k.kecamatan}</td>
                   <td className="px-4 py-3 text-right font-medium text-gray-700">{k.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">Laporan Terbaru di Wilayah</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-4 py-3">Laporan</th>
+                <th className="px-4 py-3">Kecamatan</th>
+                <th className="px-4 py-3">Kategori</th>
+                <th className="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {stats.recentReports.length === 0 ? (
+                <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-500">Belum ada laporan di wilayah ini.</td></tr>
+              ) : stats.recentReports.map((report) => (
+                <tr key={report.id}>
+                  <td className="px-4 py-3"><Link className="font-medium text-cyan-300 hover:text-cyan-200" href={`/laporan/${report.id}`}>{report.judul}</Link><p className="mt-1 text-xs text-gray-500">{report.pelapor_nama}</p></td>
+                  <td className="px-4 py-3 text-gray-400">{report.wilayah_nama ?? "-"}</td>
+                  <td className="px-4 py-3 text-gray-300">{report.kategori}</td>
+                  <td className="px-4 py-3"><StatusBadge status={report.status} /></td>
                 </tr>
               ))}
             </tbody>

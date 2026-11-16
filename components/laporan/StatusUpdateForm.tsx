@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import { postForm } from "@/lib/api-client";
+import { useCSRFToken } from "@/hooks/useCSRFToken";
 
 const STATUS_OPTIONS = ["Diterima", "Diverifikasi", "Diproses", "Selesai"];
 
 export default function StatusUpdateForm({ laporanId, statusSaatIni }: { laporanId: number; statusSaatIni: string }) {
   const router = useRouter();
+  const { csrfToken, loading: csrfLoading } = useCSRFToken();
   const [status, setStatus] = useState(statusSaatIni);
   const [catatan, setCatatan] = useState("");
   const [fotoHasil, setFotoHasil] = useState<File | null>(null);
@@ -25,6 +27,10 @@ export default function StatusUpdateForm({ laporanId, statusSaatIni }: { laporan
     e.preventDefault();
     setError("");
     setMessage("");
+    if (!csrfToken) {
+      setError("Token keamanan belum tersedia. Muat ulang halaman lalu coba lagi.");
+      return;
+    }
     setLoading(true);
 
     const formData = new FormData();
@@ -32,7 +38,7 @@ export default function StatusUpdateForm({ laporanId, statusSaatIni }: { laporan
     formData.set("catatan", catatan);
     if (fotoHasil) formData.set("fotoHasil", fotoHasil);
 
-    const { ok, data } = await postForm(`/api/laporan/${laporanId}/status`, formData);
+    const { ok, data } = await postForm(`/api/laporan/${laporanId}/status`, formData, csrfToken);
     setLoading(false);
 
     if (!ok) {
@@ -93,7 +99,7 @@ export default function StatusUpdateForm({ laporanId, statusSaatIni }: { laporan
         <input id="fotoHasil" type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
       </div>
 
-      <Button type="submit" disabled={loading}>
+      <Button type="submit" disabled={loading || csrfLoading || !csrfToken}>
         {loading ? "Menyimpan..." : "Simpan"}
       </Button>
     </form>

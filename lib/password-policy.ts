@@ -25,7 +25,7 @@ const DEFAULT_REQUIREMENTS: PasswordRequirements = {
   requireUppercase: true,
   requireLowercase: true,
   requireNumber: true,
-  requireSpecial: false, // Optional untuk user experience
+  requireSpecial: true, // Required by spec
   bannedPasswords: true,
 };
 
@@ -42,6 +42,8 @@ export function validatePassword(
 ): PasswordValidationResult {
   const reqs = { ...DEFAULT_REQUIREMENTS, ...requirements };
   const errors: string[] = [];
+
+  if (password.length > 128) errors.push("Password maksimal 128 karakter");
 
   // Check minimum length
   if (password.length < reqs.minLength) {
@@ -122,19 +124,29 @@ function calculateStrength(password: string): "weak" | "medium" | "strong" {
 }
 
 /**
- * Generate password strength feedback for UI
+ * Generate password strength feedback for UI (Real-time Checklist)
  */
-export function getPasswordFeedback(password: string): {
+export function getPasswordFeedback(password: string, username?: string): {
   checks: Array<{ label: string; passed: boolean }>;
   strength: "weak" | "medium" | "strong";
   color: string;
 } {
+  const isUsernameInPwd = Boolean(
+    username &&
+      username.trim().length >= 3 &&
+      password.toLowerCase().includes(username.toLowerCase().trim())
+  );
+
   const checks = [
     { label: "Minimal 8 karakter", passed: password.length >= 8 },
-    { label: "Mengandung huruf besar", passed: /[A-Z]/.test(password) },
-    { label: "Mengandung huruf kecil", passed: /[a-z]/.test(password) },
-    { label: "Mengandung angka", passed: /[0-9]/.test(password) },
-    { label: "Bukan password umum", passed: !isCommonPassword(password) },
+    { label: "Huruf besar (A-Z)", passed: /[A-Z]/.test(password) },
+    { label: "Huruf kecil (a-z)", passed: /[a-z]/.test(password) },
+    { label: "Angka (0-9)", passed: /[0-9]/.test(password) },
+    { label: "Simbol khusus (!@#$%^&*...)", passed: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
+    {
+      label: "Bukan kata umum & bebas username",
+      passed: !isCommonPassword(password) && !isUsernameInPwd,
+    },
   ];
 
   const strength = calculateStrength(password);

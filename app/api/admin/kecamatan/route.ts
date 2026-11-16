@@ -9,11 +9,17 @@ export async function GET(req: Request) {
     if (!user) {
       return NextResponse.json({ error: "Belum login" }, { status: 401 });
     }
+    if ((user.role || "").toLowerCase() !== "admin_pemda") {
+      return NextResponse.json({ error: "Akses khusus Admin Pemda" }, { status: 403 });
+    }
 
     const { searchParams } = new URL(req.url);
     const kotaKabId = searchParams.get("kotaKabId") ?? "";
     if (!kotaKabId) {
       return NextResponse.json({ error: "kotaKabId wajib diisi" }, { status: 400 });
+    }
+    if (Number(kotaKabId) !== Number(user.wilayah_id)) {
+      return NextResponse.json({ error: "Akses wilayah ditolak" }, { status: 403 });
     }
 
     return NextResponse.json(await listKecamatanByKotaKab(kotaKabId));

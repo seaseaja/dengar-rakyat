@@ -8,8 +8,8 @@ interface EditProfileFormProps {
     id: number;
     nama: string;
     email: string;
-    nik: string | null;
-    alamat: string | null;
+    nik?: string | null;
+    alamat?: string | null;
     wilayah_nama?: string | null;
   };
 }
@@ -26,9 +26,10 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
     setMessage(null);
 
     try {
+      const csrf = await fetch("/api/auth/csrf", { credentials: "include" }).then((r) => r.json());
       const res = await fetch("/api/profile/update", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf.token },
         credentials: "include",
         body: JSON.stringify({ nama, alamat }),
       });

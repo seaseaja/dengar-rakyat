@@ -7,34 +7,35 @@
  */
 
 import { NextResponse } from "next/server";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
+import crypto from "node:crypto";
 import { loginUser } from "@/features/auth/login.service";
 import { logAuthEvent } from "@/features/audit/audit.service";
-import { getRequestContext } from "@/lib/request-context";
+import { getClientIP, getRequestContext } from "@/lib/request-context";
 import { SESSION_COOKIE_NAME, getSessionCookieOptions } from "@/lib/cookies";
 import { checkMultipleRateLimits, resetRateLimit, RateLimits } from "@/lib/rate-limiter";
 import { ApiError, handleApiError } from "@/lib/error-handler";
 
 export async function POST(req: Request) {
   const context = getRequestContext(req);
-  const headersList = await headers();
-  const ip = headersList.get("x-forwarded-for")?.split(",")[0].trim() || 
-             headersList.get("x-real-ip") || 
-             "unknown";
+  const ip = getClientIP(req) || "unknown";
   
   try {
-    const { email, password } = await req.json();
+    const body = await req.json();
+    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+    const password = typeof body?.password === "string" ? body.password : "";
 
-    if (!email || !password) {
+    if (!email || !password || email.length > 100 || password.length > 1024) {
       throw ApiError.badRequest("Email dan password wajib diisi");
     }
+    const emailRateKey = crypto.createHash("sha256").update(email).digest("hex");
 
     // Rate limit check (per IP AND per email)
     // Spec: 5 attempts, then wait 2 minutes
     try {
       const rateLimit = checkMultipleRateLimits([
-        { key: `login:ip:${ip}`, ...RateLimits.LOGIN_IP },
-        { key: `login:email:${email}`, ...RateLimits.LOGIN_EMAIL },
+        ...(ip !== "unknown" ? [{ key: `login:ip:${ip}`, ...RateLimits.LOGIN_IP }] : []),
+        { key: `login:email:${emailRateKey}`, ...RateLimits.LOGIN_EMAIL },
       ]);
 
       if (!rateLimit.allowed) {
@@ -96,8 +97,8 @@ export async function POST(req: Request) {
     }
 
     // SUCCESS: Reset rate limit counters
-    resetRateLimit(`login:ip:${ip}`);
-    resetRateLimit(`login:email:${email}`);
+    if (ip !== "unknown") resetRateLimit(`login:ip:${ip}`);
+    resetRateLimit(`login:email:${emailRateKey}`);
 
     // Set secure session cookie
     const cookieStore = await cookies();

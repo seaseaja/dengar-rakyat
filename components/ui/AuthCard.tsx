@@ -15,8 +15,8 @@ const STEPS = [
 
 export default function AuthCard({ title, subtitle, children }: Props) {
   return (
-    <main className="flex min-h-screen items-center justify-center p-4 md:p-8">
-      <div className="glass grid w-full max-w-4xl overflow-hidden rounded-3xl md:grid-cols-2">
+    <main className="auth-page flex min-h-screen items-center justify-center p-4 md:p-8">
+      <div className="glass auth-shell grid w-full max-w-5xl overflow-hidden rounded-[2rem] md:grid-cols-2">
         <aside className="brand-panel relative hidden flex-col justify-between overflow-hidden p-10 text-white md:flex">
           <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-400/10 blur-2xl" />
           <div className="absolute -bottom-24 -left-10 h-64 w-64 rounded-full bg-sky-400/10 blur-2xl" />
@@ -52,7 +52,7 @@ export default function AuthCard({ title, subtitle, children }: Props) {
           </p>
         </aside>
 
-        <section className="space-y-6 p-8 sm:p-10">
+        <section className="auth-content space-y-6 p-8 sm:p-10 md:p-12">
           <div className="space-y-1">
             <h1 className="text-2xl font-bold text-white">{title}</h1>
             {subtitle && <p className="text-sm text-slate-400">{subtitle}</p>}

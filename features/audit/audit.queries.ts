@@ -5,23 +5,25 @@
 
 import { query } from "@/lib/db";
 import type { AuditLogEntry, AuditQuery, AuditLogRecord } from "./audit.types";
+import { generateAuditHash } from "./audit-hash";
 
 /**
  * Insert audit log entry
  */
 export async function insertAuditLog(
-  entry: AuditLogEntry & { previous_hash: string | null; current_hash: string }
+  entry: AuditLogEntry & { previous_hash: string | null; current_hash: string },
+  execute: (sql: string, params: unknown[]) => Promise<{ insertId?: number }>
 ): Promise<number> {
-  const result = await query(
+  const result = await execute(
     `INSERT INTO audit_logs (
       event_type, event_category, action,
       user_id, user_email, user_role,
       target_type, target_id,
       ip_address, user_agent, request_id,
       metadata,
-      previous_hash, current_hash,
+      previous_hash, current_hash, hash_version,
       status, error_message
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       entry.event_type,
       entry.event_category,
@@ -37,14 +39,13 @@ export async function insertAuditLog(
       entry.metadata ? JSON.stringify(entry.metadata) : null,
       entry.previous_hash,
       entry.current_hash,
+      2,
       entry.status,
       entry.error_message || null,
     ]
   );
 
-  // Get inserted ID
-  const idResult = await query("SELECT LAST_INSERT_ID() as id");
-  return idResult.rows[0].id as number;
+  return Number(result.insertId ?? 0);
 }
 
 /**
@@ -131,20 +132,42 @@ export async function queryAuditLogs(
  * Returns broken links
  */
 export async function verifyHashChain(): Promise<
-  Array<{ id: number; expected: string; actual: string }>
+  { brokenLinks: Array<{ id: number; expected: string; actual: string }>; legacyCount: number }
 > {
-  const result = await query(`
-    SELECT 
-      a.id,
-      a.current_hash AS expected,
-      b.previous_hash AS actual
-    FROM audit_logs a
-    LEFT JOIN audit_logs b ON b.id = a.id + 1
-    WHERE b.previous_hash IS NOT NULL 
-      AND b.previous_hash != a.current_hash
-  `);
-
-  return result.rows as Array<{ id: number; expected: string; actual: string }>;
+  const result = await query("SELECT * FROM audit_logs ORDER BY id ASC");
+  const broken: Array<{ id: number; expected: string; actual: string }> = [];
+  let legacyCount = 0;
+  let previousHash: string | null = null;
+  for (const row of result.rows as Array<AuditLogRecord & { hash_version?: number; metadata: string | null }>) {
+    if ((row.previous_hash ?? null) !== previousHash || !row.current_hash) {
+      broken.push({ id: row.id, expected: previousHash || "<awal rantai>", actual: row.previous_hash || "<kosong>" });
+    } else if (Number(row.hash_version) >= 2) {
+      let metadata: Record<string, unknown> | undefined;
+      try { metadata = row.metadata ? JSON.parse(row.metadata) as Record<string, unknown> : undefined; }
+      catch { metadata = undefined; }
+      const expectedHash = generateAuditHash({
+        event_type: row.event_type,
+        event_category: row.event_category,
+        action: row.action,
+        user_id: row.user_id ?? undefined,
+        user_email: row.user_email ?? undefined,
+        user_role: row.user_role ?? undefined,
+        target_type: row.target_type ?? undefined,
+        target_id: row.target_id ?? undefined,
+        ip_address: row.ip_address ?? undefined,
+        user_agent: row.user_agent ?? undefined,
+        request_id: row.request_id ?? undefined,
+        metadata,
+        status: row.status,
+        error_message: row.error_message ?? undefined,
+      }, row.previous_hash ?? null);
+      if (expectedHash !== row.current_hash) broken.push({ id: row.id, expected: expectedHash, actual: row.current_hash });
+    } else {
+      legacyCount++;
+    }
+    previousHash = row.current_hash;
+  }
+  return { brokenLinks: broken, legacyCount };
 }
 
 /**

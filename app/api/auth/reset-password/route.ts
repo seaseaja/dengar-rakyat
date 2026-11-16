@@ -10,7 +10,9 @@ import { resetPassword } from "@/features/auth/password.service";
 
 export async function POST(req: Request) {
   try {
-    const { token, newPassword } = await req.json();
+    const body = await req.json();
+    const token = typeof body?.token === "string" ? body.token : "";
+    const newPassword = typeof body?.newPassword === "string" ? body.newPassword : "";
 
     if (!token || !newPassword) {
       return NextResponse.json(

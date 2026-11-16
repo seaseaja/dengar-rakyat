@@ -31,14 +31,13 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      message: result.message || "Jika email terdaftar, link reset password telah dikirim",
-      // token: result.token // For testing only
+      message: result.message || "Jika email terdaftar, instruksi reset akan dikirim setelah layanan email tersedia",
     });
   } catch (err) {
     console.error("Forgot password API error:", err);
     // Generic error (don't leak details)
     return NextResponse.json(
-      { message: "Jika email terdaftar, link reset password telah dikirim" },
+      { message: "Jika email terdaftar, instruksi reset akan dikirim setelah layanan email tersedia" },
       { status: 200 }
     );
   }

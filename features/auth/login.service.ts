@@ -37,7 +37,7 @@ export async function loginUser(
 
   // Verify password with Argon2id
   try {
-    const isValid = await argon2.verify(user.password, password);
+    const isValid = await argon2.verify(user.password || "", password);
     
     if (!isValid) {
       return { ok: false, status: 401, error: "Email atau password salah" };

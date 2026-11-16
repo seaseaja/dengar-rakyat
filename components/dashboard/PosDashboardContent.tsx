@@ -1,25 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Bar, BarChart, CartesianGrid, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { format, parseISO } from "date-fns";
 import StatusBadge from "@/components/ui/StatusBadge";
 import InsightsSummary from "./InsightsSummary";
+import { useDashboardStats } from "./useDashboardStats";
 
 const STATUS_COLORS: Record<string, string> = {
   Diterima: "#f59e0b",
-  Diverifikasi: "#3b82f6",
-  Diproses: "#6366f1",
+  Diverifikasi: "#38bdf8",
+  Diproses: "#a78bfa",
   Selesai: "#10b981",
 };
 
 interface StatsData {
   dailyTrend: Array<{ date: string; count: number }>;
   statusDistribution: Array<{ status: string; count: number }>;
+  topCategories: Array<{ kategori: string; count: number }>;
   recentActivity: Array<{
     id: number;
     judul: string;
+    kategori: string;
     status: string;
     created_at: string;
     pelapor_nama: string;
@@ -28,31 +30,7 @@ interface StatsData {
 }
 
 export default function PosDashboardContent() {
-  const [stats, setStats] = useState<StatsData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadStats() {
-      try {
-        const res = await fetch("/api/dashboard/pos-stats", {
-          credentials: "include",
-        });
-        
-        if (!res.ok) {
-          throw new Error(`Failed to load stats: ${res.status}`);
-        }
-        
-        const data = await res.json();
-        setStats(data);
-      } catch (e) {
-        console.error("Error loading pos stats:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    void loadStats();
-  }, []);
+  const { data: stats, loading, error } = useDashboardStats<StatsData>("/api/dashboard/pos-stats");
 
   if (loading) {
     return (
@@ -66,7 +44,7 @@ export default function PosDashboardContent() {
   }
 
   if (!stats) {
-    return <p className="text-sm text-red-500">Gagal memuat data statistik</p>;
+    return <p className="text-sm text-red-300">{error || "Gagal memuat data statistik"}</p>;
   }
 
   const { totalStats, statusDistribution } = stats;
@@ -119,15 +97,33 @@ export default function PosDashboardContent() {
         <h3 className="mb-4 text-lg font-semibold text-gray-900">Tren 7 Hari Terakhir</h3>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={formattedTrend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="dateLabel" stroke="#6b7280" style={{ fontSize: "12px" }} />
-            <YAxis stroke="#6b7280" style={{ fontSize: "12px" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis dataKey="dateLabel" stroke="#94a3b8" style={{ fontSize: "12px" }} />
+            <YAxis stroke="#94a3b8" style={{ fontSize: "12px" }} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px" }}
+              contentStyle={{ backgroundColor: "#0a142d", border: "1px solid #334155", borderRadius: "8px" }}
             />
-            <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
+            <Line type="monotone" dataKey="count" stroke="#38bdf8" strokeWidth={2} dot={{ r: 4 }} />
           </LineChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Category totals are scoped to this post's territory. */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">Kategori Laporan di Wilayah</h3>
+        {stats.topCategories.length === 0 ? (
+          <p className="text-sm text-gray-500">Belum ada laporan masuk di wilayah ini.</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={stats.topCategories} layout="vertical" margin={{ left: 16, right: 16 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis type="number" stroke="#94a3b8" allowDecimals={false} />
+              <YAxis dataKey="kategori" type="category" width={120} stroke="#94a3b8" />
+              <Tooltip contentStyle={{ backgroundColor: "#0a142d", border: "1px solid #334155", borderRadius: "8px" }} />
+              <Bar dataKey="count" name="Jumlah laporan" fill="#38bdf8" radius={[0, 6, 6, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* Status Progress Bars */}
@@ -186,10 +182,12 @@ export default function PosDashboardContent() {
                     {activity.judul}
                   </Link>
                   <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                    <span>{activity.kategori}</span>
+                    <span>•</span>
                     <StatusBadge status={activity.status} />
-                    <span>•</span>
+                    <span>Ã¢â‚¬Â¢</span>
                     <span>{activity.pelapor_nama}</span>
-                    <span>•</span>
+                    <span>Ã¢â‚¬Â¢</span>
                     <span>{format(parseISO(activity.created_at), "dd MMM yyyy, HH:mm")}</span>
                   </div>
                 </div>
@@ -198,14 +196,6 @@ export default function PosDashboardContent() {
           </div>
         )}
       </div>
-
-      {/* Quick Action */}
-      <Link
-        href="/laporan"
-        className="block rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-center font-semibold text-white shadow-lg transition hover:from-blue-700 hover:to-indigo-700"
-      >
-        Lihat Semua Laporan →
-      </Link>
     </div>
   );
 }

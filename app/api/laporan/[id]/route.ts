@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { validateSession } from "@/features/auth/session.service";
-import { findLaporanById } from "@/features/laporan/laporan.queries";
+import { findLaporanById, findStatusHistory } from "@/features/laporan/laporan.queries";
 import { SESSION_COOKIE_NAME } from "@/lib/cookies";
 import { handleApiError, ApiError } from "@/lib/error-handler";
 import { logDataEvent } from "@/features/audit/audit.service";
 import { decrypt } from "@/lib/crypto";
+import { getWilayahTreeIds } from "@/features/wilayah/territory.queries";
+import { inspectReportFile } from "@/lib/report-files";
+import { getClientIP } from "@/lib/request-context";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -32,20 +35,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     // RBAC: Check ownership OR wilayah access
     let wilayahIds: number[] | undefined = undefined;
+    const role = (user.role || "").toLowerCase();
     
-    if (user.role === "PUSAT") {
+    const isPusat = role === "pusat";
+    if (isPusat) {
       // PUSAT can see all reports (no wilayah filter)
       wilayahIds = undefined;
-    } else if (user.role === "PEMDA") {
-      // PEMDA can see reports in their kota/kabupaten
-      wilayahIds = user.wilayah_id ? [user.wilayah_id] : undefined;
+    } else if (role === "admin_pemda" || role === "pemda") {
+      wilayahIds = user.wilayah_id ? await getWilayahTreeIds(user.wilayah_id) : [];
+    } else if (role === "petugas_pos" || role === "pos") {
+      // Staff roles can access reports in their assigned wilayah.
+      wilayahIds = user.wilayah_id ? await getWilayahTreeIds(user.wilayah_id) : [];
     } else {
-      // POS/Regular user - only their own reports OR reports in their wilayah
-      wilayahIds = user.wilayah_id ? [user.wilayah_id] : undefined;
+      // Warga can only access their own reports.
+      wilayahIds = undefined;
     }
 
     // Find laporan with ownership/wilayah check
-    const laporan = await findLaporanById(laporanId, user.id, wilayahIds);
+    const laporan = await findLaporanById(laporanId, user.id, wilayahIds, isPusat);
 
     if (!laporan) {
       throw ApiError.notFound("Laporan tidak ditemukan atau Anda tidak memiliki akses");
@@ -70,6 +77,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       // Return encrypted data as-is
     }
 
+    Object.assign(decryptedLaporan, {
+      foto_integrity_valid: (await inspectReportFile(laporan.foto_path, laporan.foto_hash))?.integrityValid ?? false,
+      foto_hasil_integrity_valid: (await inspectReportFile(laporan.foto_hasil_path, laporan.foto_hasil_hash))?.integrityValid ?? false,
+    });
+
     // Audit log
     await logDataEvent({
       event_type: "laporan_read",
@@ -78,10 +90,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       user_role: user.role,
       target_type: "laporan",
       target_id: id,
-      ip_address: req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown",
+      ip_address: getClientIP(req),
     });
 
-    return NextResponse.json(decryptedLaporan);
+    const statusHistory = await findStatusHistory(laporanId);
+    return NextResponse.json({ ...decryptedLaporan, status_history: statusHistory });
   } catch (error) {
     return handleApiError(error, `GET /api/laporan/${(await params).id}`);
   }

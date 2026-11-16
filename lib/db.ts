@@ -26,5 +26,11 @@ if (process.env.NODE_ENV !== "production") globalForMysql.mysqlPool = pool;
 export async function query(text: string, params?: unknown[]) {
   // nosem  grep
   const [rows] = await pool.query(text, params);
-  return { rows: rows as any[] };
+  const isHeader = rows && typeof rows === "object" && !Array.isArray(rows);
+  return {
+    rows: Array.isArray(rows) ? (rows as any[]) : [],
+    affectedRows: isHeader ? (rows as any).affectedRows ?? 0 : (Array.isArray(rows) ? rows.length : 0),
+    insertId: isHeader ? (rows as any).insertId ?? 0 : 0,
+    raw: rows,
+  };
 }

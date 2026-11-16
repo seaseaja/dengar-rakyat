@@ -20,12 +20,12 @@ export default async function LaporanDetailPage({
   const { id } = await params;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="dashboard-theme min-h-screen">
       <Navbar user={user} />
 
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <Link
-          href="/laporan"
+          href={user.role === "warga" ? "/laporan" : user.role === "pusat" ? "/dashboard/pusat" : user.role === "admin_pemda" ? "/dashboard/pemda" : user.role === "petugas_pos" ? "/dashboard/pos" : "/dashboard"}
           className="mb-6 inline-flex items-center space-x-2 text-sm font-medium text-blue-600 hover:text-blue-700"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -34,7 +34,7 @@ export default async function LaporanDetailPage({
           <span>Kembali ke Laporan</span>
         </Link>
 
-        <LaporanDetail laporanId={Number.parseInt(id)} />
+        <LaporanDetail id={id} showStatusForm={user.role !== "warga"} canManageSharing={user.role === "warga"} />
       </main>
     </div>
   );

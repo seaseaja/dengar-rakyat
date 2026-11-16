@@ -1,40 +1,24 @@
-/**
- * Verify Audit Log Integrity Script
- * 
- * Run with: npx tsx scripts/verify-audit-integrity.ts
- */
-
+/** Run with: npx tsx scripts/verify-audit-integrity.ts */
 import { verifyAuditIntegrity } from "../features/audit/audit.service";
 
 async function main() {
-  console.log("🔍 Verifying audit log integrity...\n");
-
   try {
     const result = await verifyAuditIntegrity();
-
     if (result.valid) {
-      console.log("✅ PASS: Audit log integrity verified");
-      console.log("   No tampering detected\n");
+      console.log("PASS: Audit payloads and chain links verified.");
       process.exit(0);
-    } else {
-      console.log("❌ FAIL: Audit log tampering detected\n");
-      console.log(`   Found ${result.brokenLinks.length} broken link(s):\n`);
-
-      for (const link of result.brokenLinks) {
-        console.log(`   - Log ID ${link.id}:`);
-        console.log(`     Expected hash: ${link.expected}`);
-        console.log(`     Actual hash:   ${link.actual}`);
-        console.log();
-      }
-
-      console.log("   Integrity: BROKEN\n");
-      process.exit(1);
     }
+    console.error("FAIL: Audit integrity is incomplete or a mismatch was found.");
+    console.error(`Broken links or payload hashes: ${result.brokenLinks.length}`);
+    console.error(`Legacy rows without payload-hash verification: ${result.legacyCount}`);
+    for (const link of result.brokenLinks) {
+      console.error(`Log ${link.id}: expected ${link.expected}, found ${link.actual}`);
+    }
+    process.exit(1);
   } catch (error) {
-    console.error("❌ ERROR: Failed to verify audit log integrity");
-    console.error(error);
+    console.error("ERROR: Audit integrity verification failed to run.", error);
     process.exit(1);
   }
 }
 
-main();
+void main();

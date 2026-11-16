@@ -7,7 +7,11 @@
 
 import crypto from "crypto";
 
-const CSRF_SECRET = process.env.CSRF_SECRET || crypto.randomBytes(32).toString("hex");
+const configuredCsrfSecret = process.env.CSRF_SECRET;
+if (process.env.NODE_ENV === "production" && (!configuredCsrfSecret || configuredCsrfSecret.length < 32)) {
+  throw new Error("CSRF_SECRET must contain at least 32 characters in production");
+}
+const CSRF_SECRET = configuredCsrfSecret || crypto.randomBytes(32).toString("hex");
 
 /**
  * Generate CSRF token for session
@@ -109,3 +113,6 @@ export function extractCsrfToken(
 
   return null;
 }
+
+export const validateCSRFToken = validateCsrfToken;
+export const extractCSRFToken = extractCsrfToken;

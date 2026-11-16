@@ -50,6 +50,8 @@ export async function GET() {
     return NextResponse.json(exportData, {
       headers: {
         "Content-Disposition": `attachment; filename="data-export-${user.id}.json"`,
+        "Cache-Control": "private, no-store, max-age=0",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (err) {

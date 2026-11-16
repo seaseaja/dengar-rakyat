@@ -8,8 +8,9 @@ export async function postJson(url: string, body: unknown) {
   return { ok: res.ok, data };
 }
 
-export async function postForm(url: string, formData: FormData) {
-  const res = await fetch(url, { method: "POST", body: formData });
+export async function postForm(url: string, formData: FormData, csrfToken?: string | null) {
+  const headers = csrfToken ? { "X-CSRF-Token": csrfToken } : undefined;
+  const res = await fetch(url, { method: "POST", body: formData, headers });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, data };
 }

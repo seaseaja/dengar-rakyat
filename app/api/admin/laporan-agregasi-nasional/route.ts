@@ -9,7 +9,9 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: "Belum login" }, { status: 401 });
     }
-    // Sengaja: endpoint "nasional" ini bisa dipanggil role apa pun, bukan cuma Pusat
+    if ((user.role || "").toLowerCase() !== "pusat") {
+      return NextResponse.json({ error: "Akses khusus Pemerintah Pusat" }, { status: 403 });
+    }
     return NextResponse.json(await countStatusNasional());
   } catch (err) {
     return serverError(err);

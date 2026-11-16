@@ -50,6 +50,12 @@ export function checkRateLimit(
 } {
   try {
     const now = Date.now();
+    if (store.size >= 50_000 && !store.has(key)) {
+      for (const [storedKey, storedEntry] of store.entries()) {
+        if (storedEntry.resetAt < now) store.delete(storedKey);
+      }
+      if (store.size >= 50_000) throw new Error("Rate limiter capacity reached");
+    }
     const entry = store.get(key);
 
     // No entry or window expired
@@ -99,20 +105,11 @@ export function checkMultipleRateLimits(
   retryAfter?: number;
   failedCheck?: string;
 } {
-  for (const check of checks) {
-    const result = checkRateLimit(check.key, check.maxAttempts, check.windowMs);
-    if (!result.allowed) {
-      return {
-        ...result,
-        failedCheck: check.key,
-      };
-    }
-  }
-
-  // All checks passed - return most restrictive remaining count
-  const results = checks.map(c => checkRateLimit(c.key, c.maxAttempts, c.windowMs));
-  const minRemaining = Math.min(...results.map(r => r.remaining));
-  const maxResetAt = Math.max(...results.map(r => r.resetAt));
+  const results = checks.map((check) => ({ check, result: checkRateLimit(check.key, check.maxAttempts, check.windowMs) }));
+  const minRemaining = Math.min(...results.map(({ result }) => result.remaining));
+  const maxResetAt = Math.max(...results.map(r => r.result.resetAt));
+  const failed = results.find(({ result }) => !result.allowed);
+  if (failed) return { ...failed.result, failedCheck: failed.check.key };
 
   return {
     allowed: true,
