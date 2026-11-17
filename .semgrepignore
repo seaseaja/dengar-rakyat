@@ -1,8 +1,6 @@
 # Semgrep Ignore Rules for Dengar Rakyat
 # Format: path:rule_id
 
-# Validated false positives with proper security controls in place
-
 # Path traversal in file upload - using cryptographically random filenames with validation
 features/laporan/status.service.ts:javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
 
@@ -16,3 +14,9 @@ lib/db.ts:javascript.lang.security.audit.sqli.node-mysql-sqli.node-mysql-sqli
 lib/alerting.ts:javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
 lib/error-handler.ts:javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
 
+# Schema migration script - internal only, uses parameterized queries
+scripts/align-legacy-schema.js:javascript.lang.security.audit.sqli.express-mysql-sqli.express-mysql-sqli
+scripts/align-legacy-schema.js:javascript.lang.security.audit.sqli.node-mysql-sqli.node-mysql-sqli
+
+# File upload status service - generated filenames with cryptographic randomness and validation
+features/laporan/status.service.ts:javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
