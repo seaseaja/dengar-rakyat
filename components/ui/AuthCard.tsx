@@ -30,7 +30,7 @@ export default function AuthCard({ title, subtitle, children }: Props) {
             <h2 className="text-3xl font-bold leading-tight">
               Suara warga,
               <br />
-              <span className="text-sky-300">langsung didengar.</span>
+              <span className="text-white">langsung didengar.</span>
             </h2>
             <ul className="space-y-5">
               {STEPS.map(([judul, desk], i) => (
@@ -63,3 +63,4 @@ export default function AuthCard({ title, subtitle, children }: Props) {
     </main>
   );
 }
+

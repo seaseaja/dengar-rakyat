@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "../auth/LogoutButton";
@@ -26,6 +26,10 @@ export default function Navbar({ user }: NavbarProps) {
   const [showLaporanMenu, setShowLaporanMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+  // Refs for dropdown containers to track click targets
+  const laporanMenuRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
   const isDashboardActive = pathname?.startsWith("/dashboard");
   const isLaporanActive = pathname?.startsWith("/laporan");
   const isProfileActive = pathname === "/profile";
@@ -35,6 +39,42 @@ export default function Navbar({ user }: NavbarProps) {
     : normalizedRole === "admin_pemda" ? "/dashboard/pemda"
     : normalizedRole === "petugas_pos" ? "/dashboard/pos"
     : "/dashboard";
+
+  // Document click listener to close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+
+      // Close laporan menu if click is outside
+      if (laporanMenuRef.current && !laporanMenuRef.current.contains(target)) {
+        setShowLaporanMenu(false);
+      }
+
+      // Close profile menu if click is outside
+      if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
+        setShowProfileMenu(false);
+      }
+    }
+
+    // Handle Escape key to close all dropdowns
+    function handleEscapeKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setShowLaporanMenu(false);
+        setShowProfileMenu(false);
+      }
+    }
+
+    // Only add listeners when menus are open
+    if (showLaporanMenu || showProfileMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleEscapeKey);
+
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("keydown", handleEscapeKey);
+      };
+    }
+  }, [showLaporanMenu, showProfileMenu]);
 
   return (
     <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
@@ -54,7 +94,7 @@ export default function Navbar({ user }: NavbarProps) {
               {/* Dashboard Link */}
               <Link
                 href={dashboardHref}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${ 
                   isDashboardActive
                     ? "bg-blue-50 text-blue-700"
                     : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
@@ -67,12 +107,11 @@ export default function Navbar({ user }: NavbarProps) {
               </Link>}
 
               {/* Personal reports are a citizen-only workflow. */}
-              {normalizedRole === "warga" && <div className="relative">
+              {normalizedRole === "warga" && <div className="relative" ref={laporanMenuRef}>
                 <button
                   onClick={() => setShowLaporanMenu(!showLaporanMenu)}
-                  onBlur={() => setTimeout(() => setShowLaporanMenu(false), 200)}
                   className={`flex items-center space-x-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                    isLaporanActive
+                    isLaporanActive || showLaporanMenu
                       ? "bg-blue-50 text-blue-700"
                       : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                   }`}
@@ -89,35 +128,41 @@ export default function Navbar({ user }: NavbarProps) {
                 </button>
 
                 {showLaporanMenu && (
-                  <div className="menu-surface absolute left-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white shadow-lg">
+                  <div className="menu-surface absolute left-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white shadow-lg z-10">
                     <div className="py-1">
                       <Link
                         href="/laporan/baru"
-                        className="flex items-center space-x-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                        className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded transition-colors"
+                        onClick={() => setShowLaporanMenu(false)}
                       >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v16m8-8H4"
-                          />
-                        </svg>
-                        <span>Buat Laporan Baru</span>
+                        <div className="flex items-center space-x-3">
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 4v16m8-8H4"
+                            />
+                          </svg>
+                          <span>Buat Laporan Baru</span>
+                        </div>
                       </Link>
                       <Link
                         href="/laporan"
-                        className="flex items-center space-x-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                        className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded transition-colors"
+                        onClick={() => setShowLaporanMenu(false)}
                       >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                        <span>Laporan Saya</span>
+                        <div className="flex items-center space-x-3">
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                          <span>Laporan Saya</span>
+                        </div>
                       </Link>
                     </div>
                   </div>
@@ -129,10 +174,9 @@ export default function Navbar({ user }: NavbarProps) {
           {/* Right Side - Profile & Logout */}
           <div className="flex items-center space-x-4">
             {/* User Info & Profile Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={profileMenuRef}>
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                onBlur={() => setTimeout(() => setShowProfileMenu(false), 200)}
                 className="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-gray-100"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-blue-700 text-sm font-semibold text-white shadow-md">
@@ -155,32 +199,35 @@ export default function Navbar({ user }: NavbarProps) {
               </button>
 
               {showProfileMenu && (
-                <div className="menu-surface absolute right-0 mt-2 w-64 rounded-xl border border-gray-200 bg-white shadow-lg">
+                <div className="menu-surface absolute right-0 mt-2 w-64 rounded-xl border border-gray-200 bg-white shadow-lg z-10">
                   <div className="border-b border-gray-100 px-4 py-3">
                     <p className="text-sm font-medium text-gray-900">{user.nama}</p>
                     <p className="text-xs text-gray-500">{user.email}</p>
                     {user.wilayah_nama && (
-                      <p className="mt-1 text-xs text-gray-500">ðŸ“ {user.wilayah_nama}</p>
+                      <p className="mt-1 text-xs text-gray-500">🔹 {user.wilayah_nama}</p>
                     )}
                   </div>
                   <div className="py-1">
                     <Link
                       href="/profile"
-                      className="flex items-center space-x-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded transition-colors"
+                      onClick={() => setShowProfileMenu(false)}
                     >
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                      </svg>
-                      <span>Profil Saya</span>
+                      <div className="flex items-center space-x-3">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                        <span>Profil Saya</span>
+                      </div>
                     </Link>
                   </div>
                   <div className="border-t border-gray-100 px-4 py-2">
-                    <LogoutButton />
+                    <LogoutButton onLogout={() => setShowProfileMenu(false)} />
                   </div>
                 </div>
               )}

@@ -2,7 +2,11 @@
 
 import { useRouter } from "next/navigation";
 
-export default function LogoutButton() {
+interface LogoutButtonProps {
+  onLogout?: () => void;
+}
+
+export default function LogoutButton({ onLogout }: LogoutButtonProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -17,6 +21,10 @@ export default function LogoutButton() {
       });
 
       if (res.ok) {
+        // Call the callback to close the menu before navigating
+        if (onLogout) {
+          onLogout();
+        }
         router.push("/login");
         router.refresh();
       }
